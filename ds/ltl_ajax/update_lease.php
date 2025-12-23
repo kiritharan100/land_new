@@ -386,6 +386,26 @@ detectChange("file_number",            $oldLease['file_number'] ?? "",     $file
         } catch (Exception $e) { }
     }
 
+    // If penalty re-calculation lowered the due amount, re-run allocation so
+    // any excess paid penalty is redirected to premium > rent.
+    if (!$skip_penalty && $payments_count > 0) {
+        $penaltyOverpaid = false;
+        if ($stCheck = $con->prepare("SELECT 1 FROM lease_schedules WHERE lease_id=? AND panalty_paid > panalty + 0.01 LIMIT 1")) {
+            $stCheck->bind_param('i', $lease_id);
+            $stCheck->execute();
+            $stCheck->store_result();
+            $penaltyOverpaid = $stCheck->num_rows > 0;
+            $stCheck->close();
+        }
+
+        if ($penaltyOverpaid) {
+            if (!reapplyPaymentsOnExistingSchedules($con, $lease_id)) {
+                throw new Exception('Failed to reapply payments after penalty adjustment.');
+            }
+            $note .= ' Payments realigned after penalty adjustment.';
+        }
+    }
+
     $response['success']  = true;
     $response['lease_id'] = $lease_id;
     $response['message']  = 'Lease updated successfully!' . $note;

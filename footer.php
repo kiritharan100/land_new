@@ -2,16 +2,17 @@
 <!-- Required Jqurey -->
 
 <script src="assets/plugins/jquery-ui/jquery-ui.min.js"></script>
+
 <script src="assets/plugins/tether/dist/js/tether.min.js"></script>
 
-<!-- Required Fremwork -->
+<!-- Required Fremwork ------>
 <script src="assets/plugins/bootstrap/js/bootstrap.min.js"></script>
 <script src="//cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.6.3/js/bootstrap-select.min.js"></script>
 <!-- <script src="https://azukcdncp.azureedge.net/contents/js/bootstrap?v=4.1"></script> -->
 
 <!-- waves effects.js -->
 <script src="assets/plugins/Waves/waves.min.js"></script>
- 
+
 <!-- Scrollbar JS-->
 <script src="assets/plugins/jquery-slimscroll/jquery.slimscroll.js"></script>
 <script src="assets/plugins/jquery.nicescroll/jquery.nicescroll.min.js"></script>

@@ -212,9 +212,9 @@ if( $lease_location_id == $location_id ) {
                         <a href="#" class="list-group-item list-group-item-action" data-target="#create_leases">
                             <?php if($lease_id > 0){ echo "Manage";} else { echo "Create"; } ?> Leases</a>
                         <a href="#" class="list-group-item list-group-item-action" data-target="#ltl_schedule">Schedule
-                            - Settlement Based</a>
+                            - Settlement</a>
                         <a href="#" class="list-group-item list-group-item-action"
-                            data-target="#ltl_schedule_payment">Schedule - Payment Based</a>
+                            data-target="#ltl_schedule_payment">Schedule - Payment</a>
                         <a href="#" class="list-group-item list-group-item-action" data-target="#payment">Payment</a>
                         <a href="#" class="list-group-item list-group-item-action" data-target="#field_visits">Field
                             Visits</a>
@@ -1157,8 +1157,8 @@ if( $lease_location_id == $location_id ) {
 
 
 <!-- Select2 (optional enhancement like other pages) -->
-<link href="/assets/plugins/select2/dist/css/select2.min.css" rel="stylesheet" />
-<script src="/assets/plugins/select2/dist/js/select2.full.min.js"></script>
+<!-- <link href="/assets/plugins/select2/dist/css/select2.min.css" rel="stylesheet" />
+<script src="/assets/plugins/select2/dist/js/select2.full.min.js"></script> -->
 <!-- SweetAlert2 -->
 
 

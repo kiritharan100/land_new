@@ -383,9 +383,10 @@
   }
 
   function init() {
-    if (window.jQuery && jQuery.fn.select2) {
-      jQuery(".select2").select2({ width: "100%" });
-    }
+    // deleted due to select2 removal
+    // if (window.jQuery && jQuery.fn.select2) {
+    //   jQuery(".select2").select2({ width: "100%" });
+    // }
     var leaseIdEl = document.getElementById("ltl_lease_id");
     var hasExisting = !!(leaseIdEl && leaseIdEl.value);
     // Always run applyRateByValuation on Valuation Amount input, both create and edit

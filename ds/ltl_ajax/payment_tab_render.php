@@ -102,7 +102,7 @@ if ($md5 !== ''){
         $rent_outstanding = max(0, $due_rent - $paid_rent_all);
 
         // Query 2: Penalty outstanding (due up to today minus ALL penalty paid)
-        $sqlPenDue = "SELECT COALESCE(SUM(panalty),0) AS due_penalty FROM lease_schedules WHERE lease_id=? AND end_date <= CURDATE()";
+        $sqlPenDue = "SELECT COALESCE(SUM(panalty),0) AS due_penalty FROM lease_schedules WHERE lease_id=? AND start_date <= CURDATE()";
         $sqlPenPaid = "SELECT COALESCE(SUM(panalty_paid),0) AS paid_penalty_all FROM lease_schedules WHERE lease_id=?";
         $due_penalty = 0.0; $paid_penalty_all = 0.0;
         if ($st3 = mysqli_prepare($con,$sqlPenDue)) { mysqli_stmt_bind_param($st3,'i',$lid); mysqli_stmt_execute($st3); $r3 = mysqli_stmt_get_result($st3); if ($r3 && ($rw=mysqli_fetch_assoc($r3))) $due_penalty = (float)$rw['due_penalty']; mysqli_stmt_close($st3);}        
@@ -145,10 +145,16 @@ if ($md5 !== ''){
       }
       // identify the latest active (non-cancelled) payment to enforce descending cancellations
       $lastActivePaymentId = null;
+      $totals = ['rent'=>0.0,'penalty'=>0.0,'premium'=>0.0,'discount'=>0.0,'amount'=>0.0];
       foreach ($payments as $pRow) {
         $rowCancelled = isset($pRow['status']) && (string)$pRow['status'] === '0';
         if (!$rowCancelled) {
           $lastActivePaymentId = (int)($pRow['payment_id'] ?? $pRow['id'] ?? 0);
+          $totals['rent']     += (float)($pRow['rent_paid'] ?? 0);
+          $totals['penalty']  += (float)($pRow['panalty_paid'] ?? 0);
+          $totals['premium']  += (float)($pRow['premium_paid'] ?? 0);
+          $totals['discount'] += (float)($pRow['discount_apply'] ?? 0);
+          $totals['amount']   += (float)($pRow['amount'] ?? 0);
         }
       }
       ?>
@@ -234,12 +240,23 @@ if ($md5 !== ''){
                                 <i class="fa fa-times"></i> Cancel
                             </button>
                             <?php elseif (hasPermission(19)): ?>
-                            <span class="text-muted small">Cancel later payments first</span>
+                            <span class="text-muted small"></span>
                             <?php endif; ?>
                             <?php endif; ?>
                         </td>
                     </tr>
                     <?php endforeach; endif; ?>
+                    <?php if ($payments): ?>
+                    <tr style="font-weight:bold;background:#f6f6f6;">
+                        <td colspan="3" class="text-right">Total (Active)</td>
+                        <td class="col-amt"><?= number_format($totals['rent'], 2) ?></td>
+                        <td class="col-amt"><?= number_format($totals['penalty'], 2) ?></td>
+                        <td class="col-amt"><?= number_format($totals['premium'], 2) ?></td>
+                        <td class="col-amt"><?= number_format($totals['discount'], 2) ?></td>
+                        <td class="col-amt"><?= number_format($totals['amount'], 2) ?></td>
+                        <td></td>
+                    </tr>
+                    <?php endif; ?>
                 </tbody>
             </table>
         </div>

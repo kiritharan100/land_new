@@ -91,25 +91,26 @@ $rent_outstanding = 0.0; $penalty_outstanding = 0.0; $premium_outstanding = 0.0;
 $next_schedule = null; $next_payment_amount = 0.0; $next_discount_amount = 0.0; $next_discount_deadline = '';
 $schedule_stats = ['total'=>0,'completed'=>0];
 $payment_stats = ['count'=>0,'total_paid'=>0.0];
+$payment_mix = ['rent'=>0.0,'penalty'=>0.0,'premium'=>0.0,'discount'=>0.0];
 
 if ($lease && isset($lease['lease_id'])) {
     $lid = (int)$lease['lease_id'];
     // Rent due (end_date <= today) minus all paid
-    $sqlRentDue = "SELECT COALESCE(SUM(annual_amount - COALESCE(discount_apply,0)),0) AS due_rent FROM lease_schedules WHERE lease_id=? AND end_date <= CURDATE()";
+    $sqlRentDue = "SELECT COALESCE(SUM(annual_amount - COALESCE(discount_apply,0)),0) AS due_rent FROM lease_schedules WHERE lease_id=? AND start_date <= CURDATE()";
     $sqlRentPaid = "SELECT COALESCE(SUM(paid_rent),0) AS paid_rent_all FROM lease_schedules WHERE lease_id=?";
     if ($st = mysqli_prepare($con,$sqlRentDue)) { mysqli_stmt_bind_param($st,'i',$lid); mysqli_stmt_execute($st); $r=mysqli_stmt_get_result($st); if($r && ($rw=mysqli_fetch_assoc($r))) $due_rent=(float)$rw['due_rent']; mysqli_stmt_close($st);} else { $due_rent = 0; }
     if ($st = mysqli_prepare($con,$sqlRentPaid)) { mysqli_stmt_bind_param($st,'i',$lid); mysqli_stmt_execute($st); $r=mysqli_stmt_get_result($st); if($r && ($rw=mysqli_fetch_assoc($r))) $paid_rent_all=(float)$rw['paid_rent_all']; mysqli_stmt_close($st);} else { $paid_rent_all = 0; }
     $rent_outstanding = max(0, ($due_rent ?? 0) - ($paid_rent_all ?? 0));
 
     // Penalty outstanding
-    $sqlPenDue = "SELECT COALESCE(SUM(panalty),0) AS due_penalty FROM lease_schedules WHERE lease_id=? AND end_date <= CURDATE()";
+    $sqlPenDue = "SELECT COALESCE(SUM(panalty),0) AS due_penalty FROM lease_schedules WHERE lease_id=? AND start_date <= CURDATE()";
     $sqlPenPaid = "SELECT COALESCE(SUM(panalty_paid),0) AS paid_penalty_all FROM lease_schedules WHERE lease_id=?";
     if ($st = mysqli_prepare($con,$sqlPenDue)) { mysqli_stmt_bind_param($st,'i',$lid); mysqli_stmt_execute($st); $r=mysqli_stmt_get_result($st); if($r && ($rw=mysqli_fetch_assoc($r))) $due_penalty=(float)$rw['due_penalty']; mysqli_stmt_close($st);} else { $due_penalty = 0; }
     if ($st = mysqli_prepare($con,$sqlPenPaid)) { mysqli_stmt_bind_param($st,'i',$lid); mysqli_stmt_execute($st); $r=mysqli_stmt_get_result($st); if($r && ($rw=mysqli_fetch_assoc($r))) $paid_penalty_all=(float)$rw['paid_penalty_all']; mysqli_stmt_close($st);} else { $paid_penalty_all = 0; }
     $penalty_outstanding = max(0, ($due_penalty ?? 0) - ($paid_penalty_all ?? 0));
 
     // Premium outstanding
-    $sqlPremDue = "SELECT COALESCE(SUM(premium),0) AS due_premium FROM lease_schedules WHERE lease_id=? AND end_date <= CURDATE()";
+    $sqlPremDue = "SELECT COALESCE(SUM(premium),0) AS due_premium FROM lease_schedules WHERE lease_id=? AND start_date <= CURDATE()";
     $sqlPremPaid = "SELECT COALESCE(SUM(premium_paid),0) AS paid_premium_all FROM lease_schedules WHERE lease_id=?";
     if ($st = mysqli_prepare($con,$sqlPremDue)) { mysqli_stmt_bind_param($st,'i',$lid); mysqli_stmt_execute($st); $r=mysqli_stmt_get_result($st); if($r && ($rw=mysqli_fetch_assoc($r))) $due_premium=(float)$rw['due_premium']; mysqli_stmt_close($st);} else { $due_premium = 0; }
     if ($st = mysqli_prepare($con,$sqlPremPaid)) { mysqli_stmt_bind_param($st,'i',$lid); mysqli_stmt_execute($st); $r=mysqli_stmt_get_result($st); if($r && ($rw=mysqli_fetch_assoc($r))) $paid_premium_all=(float)$rw['paid_premium_all']; mysqli_stmt_close($st);} else { $paid_premium_all = 0; }
@@ -154,23 +155,40 @@ if ($lease && isset($lease['lease_id'])) {
         }
         mysqli_stmt_close($st);
     }
+
+    // Composition of active payments (status=1)
+    if ($st = mysqli_prepare(
+        $con,
+        'SELECT 
+             COALESCE(SUM(rent_paid),0) AS rent_paid_sum,
+             COALESCE(SUM(panalty_paid),0) AS penalty_paid_sum,
+             COALESCE(SUM(premium_paid),0) AS premium_paid_sum,
+             COALESCE(SUM(discount_apply),0) AS discount_sum
+         FROM lease_payments
+         WHERE lease_id=? AND status=1'
+    )) {
+        mysqli_stmt_bind_param($st,'i',$lid);
+        mysqli_stmt_execute($st);
+        $r = mysqli_stmt_get_result($st);
+        if ($r && ($rw = mysqli_fetch_assoc($r))) {
+            $payment_mix['rent'] = (float)$rw['rent_paid_sum'];
+            $payment_mix['penalty'] = (float)$rw['penalty_paid_sum'];
+            $payment_mix['premium'] = (float)$rw['premium_paid_sum'];
+            $payment_mix['discount'] = (float)$rw['discount_sum'];
+        }
+        mysqli_stmt_close($st);
+    }
 }
 ?>
   <div class="card" id="lease-dashboard-card">
-      <div class="card-header d-flex justify-content-between align-items-center">
-          <h5 class="card-header-text mb-0">Lease Dashboard</h5>
-          <div>
-              <button type="button" class="btn btn-outline-secondary btn-sm" id="lease-dashboard-refresh-btn"><i
-                      class="fa fa-sync"></i> Refresh</button>
-          </div>
-      </div>
+
       <div class="card-block" style="padding:1rem;">
           <?php if ($error): ?>
           <div class="alert alert-info mb-3"><?= htmlspecialchars($error) ?></div>
           <?php endif; ?>
 
           <?php if ($lease): ?>
-          <div class="mb-3"
+          <div class="mb-3" align='center'
               style="background:#fff;border:2px solid #dc3545;color:#dc3545;font-size:1.05rem;font-weight:600;padding:10px 12px;border-radius:6px;letter-spacing:0.5px;">
               <span style="font-weight:700;text-transform:uppercase;">Outstanding:</span>
               Premium: <?= number_format($premium_outstanding,2) ?> &nbsp;|
@@ -182,7 +200,8 @@ if ($lease && isset($lease['lease_id'])) {
           <div class="row">
               <div class="col-md-6 mb-3">
                   <div class="card h-100">
-                      <div class="card-header p-2"><strong>Beneficiary Information</strong></div>
+                      <div class="card-header p-2" style='padding-bottom: 0px;'><strong>Beneficiary Information</strong>
+                      </div>
                       <div class="card-block p-2" style="font-size:0.9rem;">
                           <?php if ($ben): ?>
                           <?php
@@ -218,9 +237,10 @@ if ($lease && isset($lease['lease_id'])) {
               </div>
               <div class="col-md-6 mb-3">
                   <div class="card h-100">
-                      <div class="card-header p-2"><strong>Outstanding Composition</strong></div>
+                      <div class="card-header p-2" style='padding-bottom: 0px;'><strong>Payment Composition (Active
+                              Payments)</strong></div>
                       <div class="card-block p-2">
-                          <div id="outstanding-pie" style="height:210px;"></div>
+                          <div id="payments-pie" style="height:175px;"></div>
                       </div>
                   </div>
               </div>
@@ -229,7 +249,7 @@ if ($lease && isset($lease['lease_id'])) {
           <div class="row">
               <div class="col-md-12 mb-3">
                   <div class="card h-100">
-                      <div class="card-header p-2"><strong>Land Information</strong></div>
+                      <div class="card-header p-2" style='padding-bottom: 0px;'><strong>Land Information</strong></div>
                       <div class="card-block p-2" style="font-size:0.85rem;">
                           <?php if ($land_ltl): ?>
                           <div><strong>DS Division:</strong> <?= htmlspecialchars($land_ltl['ds_name'] ?? '-') ?></div>
@@ -297,7 +317,7 @@ if ($lease && isset($lease['lease_id'])) {
 
     function renderChart() {
         if (typeof Highcharts === 'undefined') return; // give up silently
-        Highcharts.chart('outstanding-pie', {
+        Highcharts.chart('payments-pie', {
             chart: {
                 type: 'pie',
                 backgroundColor: 'transparent'
@@ -320,19 +340,23 @@ if ($lease && isset($lease['lease_id'])) {
                 }
             },
             series: [{
-                name: 'Outstanding',
+                name: 'Payments',
                 colorByPoint: true,
                 data: [{
-                        name: 'Premium',
-                        y: <?= json_encode($premium_outstanding) ?>
+                        name: 'Premium Paid',
+                        y: <?= json_encode($payment_mix['premium']) ?>
                     },
                     {
-                        name: 'Penalty',
-                        y: <?= json_encode($penalty_outstanding) ?>
+                        name: 'Penalty Paid',
+                        y: <?= json_encode($payment_mix['penalty']) ?>
                     },
                     {
-                        name: 'Rent',
-                        y: <?= json_encode($rent_outstanding) ?>
+                        name: 'Rent Paid',
+                        y: <?= json_encode($payment_mix['rent']) ?>
+                    },
+                    {
+                        name: 'Discount Applied',
+                        y: <?= json_encode($payment_mix['discount']) ?>
                     }
                 ]
             }]

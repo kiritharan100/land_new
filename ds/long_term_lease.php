@@ -94,7 +94,7 @@ $remindExpr = "DATE(
         </div>
 
         <div class="card">
-            <div class="card-header" align="right">
+            <div class="card-header" align="right" padding="6px;">
                 <!-- create a dropdown filter for order by option  -->
 
 
@@ -135,7 +135,7 @@ $remindExpr = "DATE(
                 </div>
 
 
-                <hr>
+                <hr style="margin-top:1px; margin-bottom:1px;">
 
             </div>
 

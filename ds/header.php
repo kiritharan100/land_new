@@ -296,6 +296,14 @@ $company_id = $_SESSION['customer'];
                     </li>
                     <?php endif; ?>
 
+                    <?php if (hasPermission(25)): ?>
+                    <li class="<?php $url='other_payment.php'; if($url == $current_url){echo "active";}?> treeview">
+                        <a class="waves-effect waves-dark" href="<?php echo $url; ?>">
+                            <i class="fa fa-coins"></i><span> Other Payment</span>
+                        </a>
+                    </li>
+                    <?php endif; ?>
+
 
                     <?php if (hasPermission(117)): ?>
                     <li class="<?php

@@ -160,7 +160,7 @@ $company_id = $_SESSION['customer'];
 
 
 
-                    
+
                         <script>
                         $("#language-select li").on("click", function() {
                             var language_select = $(this).attr('id');
@@ -179,8 +179,8 @@ $company_id = $_SESSION['customer'];
 
 
 
-                         
-                            <?php $count_client = 0 ;
+
+                        <?php $count_client = 0 ;
                         $sel_query="SELECT client_registration.md5_client, client_registration.client_name from client_registration 
                         INNER JOIN
                         user_location ON user_location.location_id  = client_registration.c_id AND user_location.usr_id ='$user_id'
@@ -192,19 +192,20 @@ $company_id = $_SESSION['customer'];
                         //  if($rowcount > 1){
                          
                          ?>
- <li class="dropdown" id='client-select' > 
-                  <form action='' method="POST"  >
-<select id="search_client" name="selected_client" class="form-control input-sm" style="width:300px;" onchange="this.form.submit()">
-    <option value="0">Select Location</option>
-    <?php while($row = mysqli_fetch_assoc($result)) { ?>
-        <option value="<?php echo $row['md5_client']; ?>"
-            <?php if ($client_cook == $row['md5_client']) { echo 'selected';  $count_client += 1; } ?>>
-            <?php echo htmlspecialchars($row['client_name']); ?>
-        </option>
-    <?php } ?>
-</select>
+                        <li class="dropdown" id='client-select'>
+                            <form action='' method="POST">
+                                <select id="search_client" name="selected_client" class="form-control input-sm"
+                                    style="width:300px;" onchange="this.form.submit()">
+                                    <option value="0">Select Location</option>
+                                    <?php while($row = mysqli_fetch_assoc($result)) { ?>
+                                    <option value="<?php echo $row['md5_client']; ?>"
+                                        <?php if ($client_cook == $row['md5_client']) { echo 'selected';  $count_client += 1; } ?>>
+                                        <?php echo htmlspecialchars($row['client_name']); ?>
+                                    </option>
+                                    <?php } ?>
+                                </select>
 
-                        </form>
+                            </form>
                         </li>
 
 
@@ -213,13 +214,13 @@ $company_id = $_SESSION['customer'];
 
                         <li class="dropdown pc-rheader-submenu message-notification search-toggle">
                             <a href="../" id="morphsearch-search" class="drop icon-circle txt-white">
-                               <i class="fa fa-home" aria-hidden="true"></i>
+                                <i class="fa fa-home" aria-hidden="true"></i>
                             </a>
                         </li>
 
-                            <li class="pc-rheader-submenu">
-                             
-                            </li>
+                        <li class="pc-rheader-submenu">
+
+                        </li>
                         <li class="pc-rheader-submenu">
                             <a href="#!" class="drop icon-circle" onclick="javascript:toggleFullScreen()">
                                 <i class="icon-size-fullscreen"></i>
@@ -232,7 +233,8 @@ $company_id = $_SESSION['customer'];
                                 class="dropdown-toggle drop icon-circle drop-image">
                                 <span><img class="img-circle " src="../assets/images/avatar-1.png" style="width:40px;"
                                         alt="User Image"></span>
-                                <span><?php echo $_SESSION['i_name'] ?> <i class="fa fa-angle-down" aria-hidden="true"></i> </span>
+                                <span><?php echo $_SESSION['i_name'] ?> <i class="fa fa-angle-down"
+                                        aria-hidden="true"></i> </span>
 
                             </a>
                             <ul class="dropdown-menu settings-menu">
@@ -270,19 +272,19 @@ $company_id = $_SESSION['customer'];
                             <i class="fa-solid fa-user"></i><span> Manage Users</span>
                         </a>
                     </li>
-                    
+
                     <!-- <li class="<?php $url='land_usage_purposes.php'; if($url == $current_url){echo "active";}?> treeview">
                         <a class="waves-effect waves-dark" href="<?php echo $url; ?>">
                             <i class="fa fa-tags"></i><span> Land Usage Purposes</span>
                         </a>
                     </li> -->
-                    
+
                     <!-- <li class="<?php $url='penalty_rate_settings.php'; if($url == $current_url){echo "active";}?> treeview">
                         <a class="waves-effect waves-dark" href="<?php echo $url; ?>">
                             <i class="fa fa-percent"></i><span> Penalty Rate Settings</span>
                         </a>
                     </li> -->
-                    
+
                     <?php if (hasPermission(14)): ?>
                     <li class="<?php $url='lease_master.php'; if($url == $current_url){echo "active";}?> treeview">
                         <a class="waves-effect waves-dark" href="<?php echo $url; ?>">
@@ -290,7 +292,7 @@ $company_id = $_SESSION['customer'];
                         </a>
                     </li>
                     <?php endif; ?>
-                    
+
                     <?php if (hasPermission(2)): ?>
                     <li class="<?php $url='client_list.php'; if($url == $current_url){echo "active";}?> treeview">
                         <a class="waves-effect waves-dark" href="<?php echo $url; ?>">
@@ -307,7 +309,7 @@ $company_id = $_SESSION['customer'];
                     </li>
                     <?php endif; ?>
 
-                    
+
                     <?php if (hasPermission(4)): ?>
                     <li class="<?php $url='sms_templates.php'; if($url == $current_url){echo "active";}?> treeview">
                         <a class="waves-effect waves-dark" href="<?php echo $url; ?>">
@@ -330,7 +332,15 @@ $company_id = $_SESSION['customer'];
                         </a>
                     </li>
                     <?php endif; ?>
-                     
+
+                    <?php if (hasPermission(24)): ?>
+                    <li class="<?php $url='payment_category.php'; if($url == $current_url){echo "active";}?> treeview">
+                        <a class="waves-effect waves-dark" href="<?php echo $url; ?>">
+                            <i class="fa fa-money-bill"></i><span> Other Payment Category</span>
+                        </a>
+                    </li>
+                    <?php endif; ?>
+
                 </ul>
             </section>
         </aside>
@@ -375,9 +385,9 @@ $company_id = $_SESSION['customer'];
             </div>
         </div>
         <?php  include 'footer.php';  exit;}   ?>
-        
-             <?php
-      if($count_client == 0){ ?>     
+
+        <?php
+      if($count_client == 0){ ?>
         <br><br>
         <div class="content-wrapper">
             <div class="container-fluid">
@@ -385,81 +395,81 @@ $company_id = $_SESSION['customer'];
                     <div class="card text-center">
                         <div class="card">
                             <div class="card-header">
-                            <i class="fa fa-info-circle fa-3x" aria-hidden="true"></i><br>
-                                 
-                                 Select Client
-                             </div>
-                             <div class="card-body">
-                                 <h5 class="card-title">Please select yout Working Location from List</h5>
-                                 <p class="card-text">Please contact your administrator if you  don't have your location in the list.
-                                 </p><br>
+                                <i class="fa fa-info-circle fa-3x" aria-hidden="true"></i><br>
+
+                                Select Client
+                            </div>
+                            <div class="card-body">
+                                <h5 class="card-title">Please select yout Working Location from List</h5>
+                                <p class="card-text">Please contact your administrator if you don't have your location
+                                    in the list.
+                                </p><br>
                                 <a href="../index.php" class="btn btn-primary">Go to Homepage</a><br>.
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div> 
-         <style>
-    .modal-content {
-  height: 120px;
-  width: 400px;
-  margin-right: 20px;
-}
+        </div>
+        <style>
+        .modal-content {
+            height: 120px;
+            width: 400px;
+            margin-right: 20px;
+        }
 
-.modal-arrow {
-    top: 10vh;
-    transform: translateY(-50%);
-    content: "";
-    left: 2.2em;
-    transform: translateY(-50%) rotate(20deg); /* Rotate as needed */
-    display: block; 
-    position: fixed;
-    bottom: auto;
-    width: 0;
-    height: 0;
-    border-style: solid;
-    border-width: 25px 35px 25px 0;
-    border-color: transparent #ffffff transparent transparent;
-    -webkit-filter: drop-shadow(-2px 0px 1px rgba(0,0,0,.5));
-    -moz-filter: drop-shadow(0px 1px 2px rgba(0,0,0,.5));
-    -ms-filter: drop-shadow(0 1px 2px rgba(0,0,0,.5));
-    -o-filter: drop-shadow(0 1px 2px rgba(0,0,0,.5));
-    filter: drop-shadow(0px 1px 2px rgba(0,0,0,.5));
-}
+        .modal-arrow {
+            top: 10vh;
+            transform: translateY(-50%);
+            content: "";
+            left: 2.2em;
+            transform: translateY(-50%) rotate(20deg);
+            /* Rotate as needed */
+            display: block;
+            position: fixed;
+            bottom: auto;
+            width: 0;
+            height: 0;
+            border-style: solid;
+            border-width: 25px 35px 25px 0;
+            border-color: transparent #ffffff transparent transparent;
+            -webkit-filter: drop-shadow(-2px 0px 1px rgba(0, 0, 0, .5));
+            -moz-filter: drop-shadow(0px 1px 2px rgba(0, 0, 0, .5));
+            -ms-filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .5));
+            -o-filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .5));
+            filter: drop-shadow(0px 1px 2px rgba(0, 0, 0, .5));
+        }
 
-@media (min-width: 768px) {
-  .modal-arrow {
-    right: calc(09px + 40%);  
-    left: auto;
-  }
-}
+        @media (min-width: 768px) {
+            .modal-arrow {
+                right: calc(09px + 40%);
+                left: auto;
+            }
+        }
+        </style>
 
-</style>
-
-<script type="text/javascript">
-    $(window).on('load', function() {
-        $('#myModal').modal('show');
-    });
-</script>
-<div class="modal fade in" id="myModal">
-    <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-          <a data-dismiss="modal" class="pull-right">
-            Close
-          </a>
-          </div>
-                <div align='center'> <br>  Please Select your Working Location to continue </div>
-        </div><!-- /.modal-content -->
-    </div><!-- /.modal-dialog -->
-    <div class="modal-arrow"></div>
-</div><!-- /.modal -->   
+        <script type="text/javascript">
+        $(window).on('load', function() {
+            $('#myModal').modal('show');
+        });
+        </script>
+        <div class="modal fade in" id="myModal">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <a data-dismiss="modal" class="pull-right">
+                            Close
+                        </a>
+                    </div>
+                    <div align='center'> <br> Please Select your Working Location to continue </div>
+                </div><!-- /.modal-content -->
+            </div><!-- /.modal-dialog -->
+            <div class="modal-arrow"></div>
+        </div><!-- /.modal -->
         <?php  include 'footer.php';  exit;}   ?>
-        
+
 
         <script>
-        
         function notify(type, title, message1) {
             $.growl({
                 icon: '',

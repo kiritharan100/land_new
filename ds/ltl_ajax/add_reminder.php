@@ -9,7 +9,7 @@ $sent_date = isset($_POST['sent_date']) ? trim($_POST['sent_date']) : '';
 $allowed   = ['Recovery Letter','Annexure 09','Annexure 12A','Annexure 12'];
 $created_by = isset($user_id) ? (int)$user_id : 0; // from auth.php
 
-//ben_id fetch
+//ben_id fetch dd
 $ben_id = null; 
 if ($stmtL = mysqli_prepare($con, 'SELECT beneficiary_id FROM leases WHERE lease_id=? LIMIT 1')) {
   mysqli_stmt_bind_param($stmtL, 'i', $lease_id);

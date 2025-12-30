@@ -212,77 +212,79 @@ function allocateLeasePayment(array $schedules, string $paymentDate, float $amou
         }
         $alloc = $allocations[$sid];
         $noOutstandingBefore = ($priorOutstanding <= PAYMENT_EPSILON);
-        $rentOutstandingAtStart = $schedule['rent_out'];
 
         $canApplyDiscount = $discountRate > 0.0
-            && $rentOutstandingAtStart > PAYMENT_EPSILON
             && $schedule['discount_remaining'] > PAYMENT_EPSILON
             && $schedule['within_window']
             && $noOutstandingBefore
             && $schedule['pen_out'] <= PAYMENT_EPSILON
-            && $schedule['prem_out'] <= PAYMENT_EPSILON
-            && $schedule['discount_apply'] <= PAYMENT_EPSILON;
-
-        $discountAttempted = false;
+            && $schedule['prem_out'] <= PAYMENT_EPSILON;
 
         while ($remaining > PAYMENT_EPSILON && $schedule['rent_out'] > PAYMENT_EPSILON) {
-            if (!$discountAttempted && $canApplyDiscount) {
-                $discountAttempted = true;
-
-                $maxAllowedDiscount = min($schedule['discount_remaining'], $rentOutstandingAtStart * $discountRate);
-                $paymentNeededForFull = $rentOutstandingAtStart - $maxAllowedDiscount;
-                $minPayWithRate = $rentOutstandingAtStart * (1.0 - $discountRate);
-
-                if ($maxAllowedDiscount <= PAYMENT_EPSILON || $paymentNeededForFull <= PAYMENT_EPSILON) {
+            if ($canApplyDiscount) {
+                $discountCap = min($schedule['discount_remaining'], $schedule['rent_out']);
+                $maxPaymentWithDiscount = max(0.0, $schedule['rent_out'] - $discountCap);
+                if ($maxPaymentWithDiscount <= PAYMENT_EPSILON) {
                     $canApplyDiscount = false;
                     continue;
                 }
 
-                if ($remaining + PAYMENT_EPSILON < $minPayWithRate || $remaining + PAYMENT_EPSILON < $paymentNeededForFull) {
+                $paymentPortion = min($remaining, $maxPaymentWithDiscount);
+                if ($paymentPortion <= PAYMENT_EPSILON) {
+                    break;
+                }
+
+                $ratio = $discountRate >= 0.999 ? 0.0 : $discountRate / (1.0 - $discountRate);
+                if ($ratio <= 0.0) {
                     $canApplyDiscount = false;
                     continue;
                 }
 
-                $outstandingRounded = round($rentOutstandingAtStart, 2);
-                $payRounded = round($paymentNeededForFull, 2);
-                $discountRounded = round($maxAllowedDiscount, 2);
-                if (round($payRounded + $discountRounded, 2) !== $outstandingRounded) {
-                    $canApplyDiscount = false;
-                    continue;
+                $discountForPortion = $paymentPortion * $ratio;
+                if ($discountForPortion > $schedule['discount_remaining']) {
+                    $discountForPortion = $schedule['discount_remaining'];
+                    $paymentPortion = $discountForPortion / $ratio;
                 }
 
-                $paymentPortion = $paymentNeededForFull;
-                if ($paymentPortion > $remaining) {
-                    $paymentPortion = $remaining;
+                $totalCredit = $paymentPortion + $discountForPortion;
+                if ($totalCredit > $schedule['rent_out'] + PAYMENT_EPSILON) {
+                    $target = $schedule['rent_out'];
+                    $paymentPortion = $target / (1.0 + $ratio);
+                    $discountForPortion = $target - $paymentPortion;
+                    if ($paymentPortion > $remaining) {
+                        $paymentPortion = $remaining;
+                        $discountForPortion = min($schedule['discount_remaining'], $paymentPortion * $ratio);
+                    }
                 }
 
                 if ($paymentPortion <= PAYMENT_EPSILON) {
-                    $canApplyDiscount = false;
-                    continue;
+                    break;
                 }
 
                 $remaining -= $paymentPortion;
-                $schedule['rent_out'] -= ($paymentPortion + $maxAllowedDiscount);
+                $schedule['rent_out'] -= ($paymentPortion + $discountForPortion);
                 if ($schedule['rent_out'] < 0.0) {
                     $schedule['rent_out'] = 0.0;
                 }
                 $schedule['paid_rent'] += $paymentPortion;
-                $schedule['discount_apply'] += $maxAllowedDiscount;
-                $schedule['discount_remaining'] = max(0.0, $schedule['discount_remaining'] - $maxAllowedDiscount);
+                $schedule['discount_apply'] += $discountForPortion;
+                $schedule['discount_remaining'] = max(0.0, $schedule['discount_remaining'] - $discountForPortion);
 
                 $alloc['rent'] += $paymentPortion;
-                $alloc['discount'] += $maxAllowedDiscount;
+                $alloc['discount'] += $discountForPortion;
                 $alloc['total_paid'] += $paymentPortion;
                 $totals['rent'] += $paymentPortion;
-                $totals['discount'] += $maxAllowedDiscount;
+                $totals['discount'] += $discountForPortion;
 
                 if ($sid === $currentScheduleId) {
                     $alloc['current_year_payment'] += $paymentPortion;
                     $totals['current_year_payment'] += $paymentPortion;
                 }
 
-                // Discount allowed only on full settlement; stop processing this schedule.
-                break;
+                if ($schedule['discount_remaining'] <= PAYMENT_EPSILON) {
+                    $canApplyDiscount = false;
+                }
+                continue;
             }
 
             $pay = min($remaining, $schedule['rent_out']);
@@ -305,10 +307,6 @@ function allocateLeasePayment(array $schedules, string $paymentDate, float $amou
                 $alloc['current_year_payment'] += $pay;
                 $totals['current_year_payment'] += $pay;
             }
-
-            // Once rent is paid without discount, do not attempt discount later.
-            $canApplyDiscount = false;
-            $discountAttempted = true;
         }
 
         $allocations[$sid] = $alloc;

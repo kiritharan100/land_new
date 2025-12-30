@@ -103,7 +103,10 @@ if (!empty($md5_ben_id) && isset($con)) {
         $lease_q = "SELECT 
                         lease_number,location_id,lease_id,
                         file_number,
-                        type_of_project
+                        type_of_project,
+                        status,
+                        lease_status,
+                        inactive_date,inactive_reason
                     FROM leases
                     WHERE beneficiary_id = ?
                     ORDER BY lease_id DESC LIMIT 1";
@@ -123,6 +126,14 @@ if (!empty($md5_ben_id) && isset($con)) {
 
 $lease_id = $lease['lease_id'] ?? '';
             $lease_location_id = $lease['location_id'] ?? '';
+$inactive_date = $lease['inactive_date'] ?? '';
+$lease_status_raw = $lease['lease_status'] ?? ($lease['status'] ?? '');
+$status_text = is_string($lease_status_raw) ? strtolower(trim($lease_status_raw)) : $lease_status_raw;
+$is_inactive = false;
+if (!empty($inactive_date)) { $is_inactive = true; }
+if (is_numeric($lease_status_raw) && intval($lease_status_raw) === 0) { $is_inactive = true; }
+if (is_string($status_text) && in_array($status_text, ['inactive','cancelled','closed'], true)) { $is_inactive = true; }
+$overviewBg = $is_inactive ? '#F5C2B8' : '#ffffff';
 if( $lease_location_id == $location_id ) {
     // ok
 } else {
@@ -136,9 +147,17 @@ if( $lease_location_id == $location_id ) {
 <div class="content-wrapper">
     <div class="container-fluid">
         <br>
-        <div class="col-md-12 bg-white" style="padding-top:5px;">
+        <div class="col-md-12 bg-white" style="padding-top:5px;background:<?= $overviewBg ?>;">
 
             <h5 class="font-weight-bold" style="margin-bottom:5px;">Long Term Lease > Overview </h5>
+            <?php if ($is_inactive): ?>
+            <div class="alert alert-warning" style="background:#F5C2B8;border-color:#e2a396;color:#7a2d21;">
+                This lease is inactive from: <?= htmlspecialchars($inactive_date ?: 'N/A') ?>
+                <?php if (!empty($lease['inactive_reason'])): ?>
+                <br>Reason: <?= htmlspecialchars($lease['inactive_reason']) ?>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
 
             <?php if ($ben): ?>
 

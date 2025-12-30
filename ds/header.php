@@ -632,7 +632,7 @@ if (!function_exists('checkPermission')) {
 
         table th,
         table td {
-            font-size: 12px;
+            font-size: 13px;
         }
 
         /* .global-table-font th,

@@ -162,6 +162,7 @@
       function (el) {
         if (el.id === "ltl_edit_btn") return;
         if (el.id === "ltl_create_btn") return;
+        if (el.id === "ltl_inactivate_btn") return;
         el.disabled = !!disabled;
       }
     );
@@ -517,7 +518,105 @@
     document
       .getElementById("ltlCreateLeaseForm")
       .addEventListener("submit", onSubmit);
-    document.getElementById("ltl_edit_btn").addEventListener("click", onEdit);
+    var editBtn = document.getElementById("ltl_edit_btn");
+    if (editBtn && !editBtn.disabled) {
+      editBtn.addEventListener("click", onEdit);
+    }
+    var inactiveBtn = document.getElementById("ltl_inactivate_btn");
+    var inactiveForm = document.getElementById("ltl-inactivate-form");
+    var inactiveModal = document.getElementById("ltl-inactivate-modal");
+
+    function openInactiveModal() {
+      var dateInput = document.getElementById("ltl_inactive_date");
+      if (dateInput && !dateInput.value) {
+        var today = new Date().toISOString().split("T")[0];
+        dateInput.value = today;
+        dateInput.setAttribute("max", today);
+      }
+      var reason = document.getElementById("ltl_inactive_reason");
+      if (reason) {
+        reason.value = "";
+      }
+      if (window.jQuery) {
+        jQuery(inactiveModal).modal("show");
+      } else if (inactiveModal) {
+        inactiveModal.style.display = "block";
+      }
+    }
+
+    function submitInactivate(e) {
+      e.preventDefault();
+      var leaseIdEl = document.getElementById("ltl_lease_id");
+      var lease_id = leaseIdEl ? leaseIdEl.value : "";
+      var dateInput = document.getElementById("ltl_inactive_date");
+      var reasonInput = document.getElementById("ltl_inactive_reason");
+      var inactive_date = dateInput ? dateInput.value : "";
+      var inactive_reason = reasonInput ? reasonInput.value.trim() : "";
+      if (!lease_id) {
+        Swal.fire("Error", "Lease not found", "error");
+        return;
+      }
+      if (!inactive_date) {
+        Swal.fire("Validation", "Inactive date is required", "warning");
+        return;
+      }
+      if (!inactive_reason) {
+        Swal.fire("Validation", "Reason is required", "warning");
+        return;
+      }
+
+      Swal.fire({
+        title: "Inactivating lease",
+        text: "Please wait...",
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading(),
+      });
+      var fd = new URLSearchParams();
+      fd.set("lease_id", lease_id);
+      fd.set("inactive_date", inactive_date);
+      fd.set("inactive_reason", inactive_reason);
+
+      fetch("ltl_ajax/inactivate_lease.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: fd.toString(),
+      })
+        .then(function (r) {
+          return r.json();
+        })
+        .then(function (resp) {
+          Swal.close();
+          if (resp && resp.success) {
+            Swal.fire("Success", resp.message || "Lease inactivated", "success");
+            if (window.jQuery) {
+              jQuery(inactiveModal).modal("hide");
+            } else if (inactiveModal) {
+              inactiveModal.style.display = "none";
+            }
+            if (inactiveBtn) {
+              inactiveBtn.disabled = true;
+              inactiveBtn.classList.add("disabled");
+            }
+          } else {
+            Swal.fire(
+              "Error",
+              (resp && resp.message) || "Failed to inactivate lease",
+              "error"
+            );
+          }
+        })
+        .catch(function () {
+          Swal.close();
+          Swal.fire("Error", "Server error", "error");
+        });
+    }
+
+    if (inactiveBtn) {
+      inactiveBtn.addEventListener("click", openInactiveModal);
+    }
+    if (inactiveForm) {
+      inactiveForm.addEventListener("submit", submitInactivate);
+    }
 
     // init
     calculateEndDate();
@@ -544,6 +643,7 @@
         function (el) {
           if (el.id === "ltl_edit_btn") return;
           if (el.id === "ltl_create_btn") return;
+          if (el.id === "ltl_inactivate_btn") return;
           el.disabled = true;
           el.setAttribute("readonly", "readonly");
         }

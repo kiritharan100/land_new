@@ -357,12 +357,12 @@ if ($md5 !== ''){
                     <div class="form-check mt-2" align='center'>
                         <input type="checkbox" class="form-check-input" id="ltl_is_first_lease"
                             <?php echo $first_lease_flag ? 'checked ' : ''; ?><?php echo $existing_lease ? 'disabled ' : ''; ?> />
-                        <label class="form-check-label" for="ltl_is_first_lease">Is it first lease</label>
+                        <label class="form-check-label" for="ltl_is_first_lease">Is it a first lease</label>
                     </div>
                 </div>
                 <div class="col-md-4<?php echo $first_lease_flag ? ' d-none' : ''; ?>" id="ltl_last_lease_group">
                     <div class="form-group mb-0">
-                        <label>Last annual Lease (last Lease)</label>
+                        <label>Annual amount of last Lease </label>
                         <input type="number" step="0.01" class="form-control" id="ltl_last_lease_annual_value"
                             name="last_lease_annual_value"
                             value="<?php echo htmlspecialchars($last_lease_annual_value ?? ''); ?>"
@@ -371,6 +371,11 @@ if ($md5 !== ''){
                 </div>
             </div>
 
+            <?php
+        $lease_status_raw = $existing_lease['lease_status'] ?? $existing_lease['status'] ?? '';
+        $lease_status_val = is_numeric($lease_status_raw) ? (int)$lease_status_raw : strtolower((string)$lease_status_raw);
+        $is_active_lease = $existing_lease && ($lease_status_val === '' || $lease_status_val === 1 || $lease_status_val === 'active');
+        ?>
             <div class="row mt-3">
                 <div class="col-md-12 text-right">
                     <button type="submit" class="btn btn-success<?php echo $existing_lease ? ' d-none' : '';?>"
@@ -379,17 +384,64 @@ if ($md5 !== ''){
                     <!-- <button type="button" class="btn btn-secondary<?php echo $existing_lease ? '' : ' d-none'; ?>" id="ltl_edit_btn"><i class="fa fa-edit"></i> Edit</button> -->
                     <?php if($has_active_changes == 0){?>
                     <?php if (hasPermission(20)): ?>
+                    <?php if ($is_active_lease): ?>
                     <button type="button" class="btn btn-secondary" id="ltl_edit_btn"> <i class="fa fa-edit"></i> Edit
                     </button>
+                    <?php else: ?>
+                    <button type="button" class="btn btn-secondary disabled" id="ltl_edit_btn" disabled
+                        title="Lease is inactive"> <i class="fa fa-edit"></i> Edit</button>
+                    <div class="text-muted small mt-2">Lease is inactive; editing is disabled.</div>
+                    <?php endif; ?>
                     <?php endif; ?>
                     <?php } else {
               echo '<div class="alert alert-warning mb-0"> Cannot edit lease while there are active premium change or write-off requests. Please resolve them first. </div>';
            }?>
+                    <?php if ($is_active_lease && hasPermission(20)): ?>
+                    <hr style="margin:12px 0;">
+                    <div align="left" class="mb-2">
+                        <strong class="text-danger">Inactivate Lease 👉 </strong>
+                        <button type="button" class="btn btn-outline-danger" id="ltl_inactivate_btn">
+                            <i class="fa fa-ban"></i> Inactivate Lease
+                        </button>
+                    </div>
+                    <?php endif; ?>
                 </div>
 
 
             </div>
         </form>
+
+        <!-- Inactivate Lease Modal -->
+        <div class="modal fade" id="ltl-inactivate-modal" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title mb-0">Inactivate Lease</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+                                aria-hidden="true">&times;</span></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="ltl-inactivate-form">
+                            <div class="form-group">
+                                <label for="ltl_inactive_date">Inactive Date *</label>
+                                <input type="date" class="form-control" id="ltl_inactive_date" name="inactive_date"
+                                    required>
+                            </div>
+                            <div class="form-group">
+                                <label for="ltl_inactive_reason">Reason *</label>
+                                <textarea class="form-control" id="ltl_inactive_reason" name="inactive_reason" rows="3"
+                                    required placeholder="Provide reason"></textarea>
+                            </div>
+                            <div class="text-right">
+                                <button type="submit" class="btn btn-danger"><i class="fa fa-ban"></i> Confirm
+                                    Inactivate</button>
+                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
         <?php endif; ?>
     </div>
 </div>

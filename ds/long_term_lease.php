@@ -181,7 +181,7 @@ $remindExpr = "DATE(
                         l.start_date,
                         l.lease_id,
                         l.type_of_project,
-                        l.lease_number,
+                        l.lease_number,l.lease_status,
  {$remindExpr} AS remind_date,
                         (
                           SELECT COUNT(*)
@@ -197,7 +197,7 @@ $remindExpr = "DATE(
                       LEFT JOIN ltl_land_registration lr ON lr.ben_id = b.ben_id
                       LEFT JOIN gn_division gn ON lr.gn_id = gn.gn_id
                       LEFT JOIN (
-                        SELECT l2.beneficiary_id, l2.file_number, l2.start_date, l2.lease_id ,l2.type_of_project,l2.lease_number
+                        SELECT l2.beneficiary_id, l2.file_number, l2.start_date, l2.lease_id ,l2.type_of_project,l2.lease_number,l2.status as lease_status
                         FROM leases l2
                         INNER JOIN (
                           SELECT beneficiary_id, MAX(lease_id) AS max_id
@@ -255,7 +255,8 @@ $count = 1;
               $reminderSent = !empty($r['annexure09_sent']);
               $reminderClass = $reminderSent ? ' class="bg-success text-white"' : '';
             ?>
-                        <tr>
+                        <tr
+                            style='<?php if ($r['lease_status'] == 'inactive') { echo "background-color: #ecb5baff;"; } ?>'>
                             <td><?= $count ?></td>
                             <td><?= htmlspecialchars($r['name']) ?></td>
                             <!-- <td><?= htmlspecialchars($r['address'] ?? '') ?></td> -->
@@ -280,7 +281,7 @@ $count = 1;
                                 <?php endif; ?>
                             </td>
                             <td align='center' <?= $reminderClass ?>>
-                                <?php if (!empty($r['remind_date'])): ?>
+                                <?php if (!empty($r['remind_date']) && $r['lease_status'] == 'active'): ?>
                                 <?= htmlspecialchars($r['remind_date']) ?>
                                 <?php else: ?>
                                 <!-- <span class="badge badge-pill badge-danger">Pending</span> -->

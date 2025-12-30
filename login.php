@@ -4,7 +4,7 @@ if (session_status() !== PHP_SESSION_ACTIVE) { session_start(); }
 
 date_default_timezone_set("Asia/Colombo");
 
-// -------------------------
+// ----------------------------
 // Load Database & Settings
 // -------------------------
 include 'db.php';

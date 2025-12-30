@@ -196,15 +196,15 @@ if ($md5 !== ''){
             <table class="table table-bordered table-sm ltl-payments-table">
                 <thead class="bg-light">
                     <tr>
-                        <th class="col-date">Date</th>
-                        <th>Reference No</th>
-                        <th>Method</th>
-                        <th class="col-amt">Rent Paid</th>
-                        <th class="col-amt">Penalty Paid</th>
-                        <th class="col-amt">Premium Paid</th>
-                        <th class="col-amt">Discount</th>
-                        <th class="col-amt">Total Payment</th>
-                        <th>Actions</th>
+                        <th width='120' class="col-date">Date</th>
+                        <th width='200'>Reference No</th>
+                        <th width='120'>Method</th>
+                        <th width='120' class="col-amt">Rent Paid</th>
+                        <th width='120' class="col-amt">Penalty Paid</th>
+                        <th width='120' class="col-amt">Premium Paid</th>
+                        <th width='120' class="col-amt">Discount</th>
+                        <th width='120' class="col-amt">Total Payment</th>
+                        <th width='230px'>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -231,17 +231,23 @@ if ($md5 !== ''){
                             <?php if ($isCancelled): ?>
                             <span class="cancelled-label">Cancelled</span>
                             <?php else: ?>
-                            <?php if (hasPermission(19) && $canCancel): ?>
-                            <button type="button" class="btn btn-outline-danger btn-sm ltl-cancel-payment-btn"
-                                data-payment-id="<?= $paymentId ?>"
-                                data-receipt="<?= htmlspecialchars($p['receipt_number']) ?>"
-                                data-date="<?= htmlspecialchars($p['payment_date']) ?>"
-                                data-amount="<?= htmlspecialchars($p['amount']) ?>">
-                                <i class="fa fa-times"></i> Cancel
-                            </button>
-                            <?php elseif (hasPermission(19)): ?>
-                            <span class="text-muted small"></span>
-                            <?php endif; ?>
+                            <div class="btn-group btn-group-sm" role="group" aria-label="Payment actions">
+                                <button type="button" class="btn btn-outline-info ltl-view-payment-btn"
+                                    data-payment-id="<?= $paymentId ?>">
+                                    <i class="fa fa-eye"></i> View
+                                </button>
+                                <?php if (hasPermission(19) && $canCancel): ?>
+                                <button type="button" class="btn btn-outline-danger ltl-cancel-payment-btn"
+                                    data-payment-id="<?= $paymentId ?>"
+                                    data-receipt="<?= htmlspecialchars($p['receipt_number']) ?>"
+                                    data-date="<?= htmlspecialchars($p['payment_date']) ?>"
+                                    data-amount="<?= htmlspecialchars($p['amount']) ?>">
+                                    <i class="fa fa-times"></i> Cancel
+                                </button>
+                                <?php elseif (hasPermission(19)): ?>
+                                <span class="text-muted small"></span>
+                                <?php endif; ?>
+                            </div>
                             <?php endif; ?>
                         </td>
                     </tr>
@@ -271,6 +277,35 @@ if ($md5 !== ''){
                                 aria-hidden="true">&times;</span></button>
                     </div>
                     <div class="modal-body" id="ltl-payment-modal-body">
+                        <div style="text-align:center;padding:16px">
+                            <img src="../img/Loading_icon.gif" alt="Loading..." style="width:96px;height:auto" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- View Payment Modal -->
+        <div class="modal fade" id="ltl-payment-view-modal" tabindex="-1" role="dialog">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header align-items-center">
+                        <h5 class="modal-title mb-0">Payment Details</h5>
+                        <div align='right'>
+
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+                                    aria-hidden="true">&times;</span></button>
+                        </div>
+                    </div>
+                    <div align='right' style='padding-right:80px; padding-top:5px;'><button type="button"
+                            class="btn btn-success btn-sm mr-2" id="ltl-payment-view-print-btn">
+                            <i class="fa fa-print"></i> Print
+                        </button>
+                    </div>
+
+                    <div class="modal-body" id="ltl-payment-view-body">
+
+
                         <div style="text-align:center;padding:16px">
                             <img src="../img/Loading_icon.gif" alt="Loading..." style="width:96px;height:auto" />
                         </div>
@@ -463,6 +498,81 @@ if ($md5 !== ''){
             }
             // Recovery letter logic removed; now handled inside Reminders tab.
             // Note: outer page listens for 'ltl:payments-updated' and reloads the Payment tab
+
+            var viewModal = document.getElementById('ltl-payment-view-modal');
+            var viewBody = document.getElementById('ltl-payment-view-body');
+            var viewPrintBtn = document.getElementById('ltl-payment-view-print-btn');
+            var viewLoaderHtml =
+                '<div style="text-align:center;padding:16px"><img src="../img/Loading_icon.gif" alt="Loading..." style="width:96px;height:auto" /></div>';
+
+            function paymentViewError(msg) {
+                if (typeof Swal !== 'undefined' && Swal.fire) {
+                    Swal.fire('Error', msg, 'error');
+                } else {
+                    alert(msg);
+                }
+            }
+
+            function openPaymentPrint() {
+                if (!viewBody) return;
+                var bodyHtml = viewBody.innerHTML || '';
+                if (!bodyHtml.trim()) {
+                    paymentViewError('Nothing to print yet.');
+                    return;
+                }
+                var printWin = window.open('', 'print-payment-detail');
+                if (!printWin) {
+                    paymentViewError('Please allow popups to print.');
+                    return;
+                }
+                var styles =
+                    '<style>body{font-family:Arial, sans-serif;margin:16px;} table{border-collapse:collapse;width:100%;} table,th,td{border:1px solid #444;} th,td{padding:6px;font-size:12px;vertical-align:middle;} tfoot td{font-weight:700;background:#f8f9fa;}</style>';
+                printWin.document.write('<html><head><title>Payment Details</title>' + styles +
+                    '</head><body>' + bodyHtml + '</body></html>');
+                printWin.document.close();
+                printWin.focus();
+                printWin.print();
+            }
+
+            if (viewPrintBtn) {
+                viewPrintBtn.addEventListener('click', openPaymentPrint);
+            }
+
+            document.querySelectorAll('.ltl-view-payment-btn').forEach(function(b) {
+                b.addEventListener('click', function() {
+                    var pid = this.getAttribute('data-payment-id');
+                    if (!pid || pid === '0') {
+                        paymentViewError('Invalid payment reference');
+                        return;
+                    }
+                    if (viewBody) {
+                        viewBody.innerHTML = viewLoaderHtml;
+                    }
+                    var url =
+                        'ltl_ajax/payment_detail.php?lease_id=<?= (int)($lease['lease_id'] ?? 0) ?>&payment_id=' +
+                        encodeURIComponent(pid) + '&_ts=' + Date.now();
+                    fetch(url)
+                        .then(function(r) {
+                            return r.text();
+                        })
+                        .then(function(html) {
+                            if (viewBody) {
+                                viewBody.innerHTML = html;
+                            }
+                        })
+                        .catch(function() {
+                            if (viewBody) {
+                                viewBody.innerHTML =
+                                    '<div class="text-danger">Failed to load payment details.</div>';
+                            }
+                        });
+                    if (window.jQuery) {
+                        jQuery('#ltl-payment-view-modal').modal('show');
+                    } else if (viewModal) {
+                        viewModal.style.display = 'block';
+                    }
+                });
+            });
 
             // Cancellation handler
             document.querySelectorAll('.ltl-cancel-payment-btn').forEach(function(b) {

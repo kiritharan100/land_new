@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Dec 20, 2025 at 07:48 AM
+-- Generation Time: Dec 30, 2025 at 01:00 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.0.30
 
@@ -31,17 +31,17 @@ CREATE TABLE `beneficiaries` (
   `ben_id` int(11) NOT NULL,
   `md5_ben_id` varchar(255) NOT NULL,
   `name` varchar(200) NOT NULL,
-  `name_sinhala` varchar(150) NOT NULL,
   `name_tamil` varchar(150) NOT NULL,
+  `name_sinhala` varchar(150) NOT NULL,
   `location_id` int(11) NOT NULL,
   `is_individual` tinyint(1) DEFAULT 1,
   `contact_person` varchar(200) DEFAULT NULL,
   `address` text DEFAULT NULL,
   `district` varchar(100) DEFAULT 'Trincomalee',
   `ds_division_id` int(11) DEFAULT NULL,
-  `ds_division_text` varchar(200) DEFAULT NULL,
+  `ds_division_text` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci DEFAULT NULL,
   `gn_division_id` int(11) DEFAULT NULL,
-  `gn_division_text` varchar(200) DEFAULT NULL,
+  `gn_division_text` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci DEFAULT NULL,
   `nic_reg_no` varchar(50) NOT NULL,
   `dob` date DEFAULT NULL,
   `nationality` varchar(50) NOT NULL,
@@ -51,8 +51,8 @@ CREATE TABLE `beneficiaries` (
   `created_by` int(11) DEFAULT NULL,
   `created_on` timestamp NOT NULL DEFAULT current_timestamp(),
   `status` int(11) NOT NULL DEFAULT 1,
-  `address_tamil` varchar(200) NOT NULL,
-  `address_sinhala` varchar(200) NOT NULL
+  `address_tamil` varchar(250) NOT NULL,
+  `address_sinhala` varchar(250) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
 
 -- --------------------------------------------------------
@@ -512,6 +512,38 @@ CREATE TABLE `manage_user_group` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `payment_category`
+--
+
+CREATE TABLE `payment_category` (
+  `cat_id` int(11) NOT NULL,
+  `payment_name` varchar(50) NOT NULL,
+  `category` varchar(50) NOT NULL,
+  `starus` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `payment_record`
+--
+
+CREATE TABLE `payment_record` (
+  `id` int(11) NOT NULL,
+  `pay_cat_id` int(11) NOT NULL,
+  `payment_date` date NOT NULL,
+  `location_id` int(11) NOT NULL,
+  `location_serial` int(11) NOT NULL,
+  `amount` decimal(10,2) NOT NULL,
+  `create_by` int(11) NOT NULL,
+  `created_on` datetime NOT NULL,
+  `status` int(11) NOT NULL DEFAULT 1,
+  `receipt_number` varchar(40) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `sms_log`
 --
 
@@ -581,8 +613,8 @@ CREATE TABLE `user_license` (
   `last_token` varchar(180) NOT NULL,
   `material` int(11) NOT NULL,
   `accounts` int(11) NOT NULL,
-  `store` int(11) NOT NULL,
-  `admin` int(11) NOT NULL,
+  `store` int(11) NOT NULL DEFAULT 1,
+  `admin` int(11) NOT NULL DEFAULT 1,
   `report` int(11) NOT NULL,
   `opd` int(11) NOT NULL,
   `ip` int(11) NOT NULL
@@ -668,9 +700,7 @@ ALTER TABLE `lease_master`
 --
 ALTER TABLE `lease_payments`
   ADD PRIMARY KEY (`payment_id`),
-  ADD UNIQUE KEY `receipt_number` (`receipt_number`),
-  ADD KEY `lease_id` (`lease_id`),
-  ADD KEY `schedule_id` (`schedule_id`);
+  ADD KEY `lease_payments_ibfk_1` (`lease_id`);
 
 --
 -- Indexes for table `lease_payments_detail`
@@ -751,6 +781,18 @@ ALTER TABLE `manage_activities`
 --
 ALTER TABLE `manage_user_group`
   ADD PRIMARY KEY (`group_id`);
+
+--
+-- Indexes for table `payment_category`
+--
+ALTER TABLE `payment_category`
+  ADD PRIMARY KEY (`cat_id`);
+
+--
+-- Indexes for table `payment_record`
+--
+ALTER TABLE `payment_record`
+  ADD PRIMARY KEY (`id`);
 
 --
 -- Indexes for table `sms_log`
@@ -917,6 +959,18 @@ ALTER TABLE `manage_activities`
 --
 ALTER TABLE `manage_user_group`
   MODIFY `group_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `payment_category`
+--
+ALTER TABLE `payment_category`
+  MODIFY `cat_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `payment_record`
+--
+ALTER TABLE `payment_record`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `sms_log`

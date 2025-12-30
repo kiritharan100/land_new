@@ -19,6 +19,31 @@ if (isset($_GET['lease_id'])) {
     $stmt->bind_param("i", $lease_id);
     $stmt->execute();
     $lease = $stmt->get_result()->fetch_assoc();
+
+    // Determine the most recent active payment date to enforce as the minimum selectable date.
+    $lastPaymentDate = null;
+    $paymentDateMin = '';
+    $defaultPaymentDate = date('Y-m-d');
+
+    $lastPaymentSql = "SELECT payment_date 
+                       FROM lease_payments 
+                       WHERE lease_id = ? AND (status IS NULL OR status = 1) 
+                       ORDER BY payment_date DESC, payment_id DESC 
+                       LIMIT 1";
+    if ($lpStmt = $con->prepare($lastPaymentSql)) {
+        $lpStmt->bind_param("i", $lease_id);
+        $lpStmt->execute();
+        $lpRes = $lpStmt->get_result();
+        if ($lpRes && ($lpRow = $lpRes->fetch_assoc())) {
+            $lastPaymentDate = $lpRow['payment_date'];
+            $paymentDateMin = $lastPaymentDate;
+        }
+        $lpStmt->close();
+    }
+
+    if ($lastPaymentDate && $lastPaymentDate > $defaultPaymentDate) {
+        $defaultPaymentDate = $lastPaymentDate;
+    }
 ?>
 <form id="paymentForm" method="post" action="ajax/record_payment_simple.php">
     <input type="hidden" name="lease_id" value="<?= $lease_id ?>">
@@ -41,7 +66,9 @@ if (isset($_GET['lease_id'])) {
             <div class="form-group">
                 <label for="payment_date">Payment Date *</label>
                 <input type="date" class="form-control" id="payment_date" name="payment_date" 
-                       value="<?= date('Y-m-d') ?>" required>
+                       value="<?= htmlspecialchars($defaultPaymentDate) ?>"
+                       <?= $paymentDateMin ? 'min="'.htmlspecialchars($paymentDateMin).'"' : '' ?>
+                       required>
             </div>
         </div>
         <div class="col-md-6">

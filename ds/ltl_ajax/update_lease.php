@@ -62,12 +62,29 @@ try{
     $valuation_date         = $_POST['valuation_date'] ?? '';
     $value_date             = $_POST['value_date'] ?? '';
     $approved_date          = $_POST['approved_date'] ?? '';
-     $initial_annual_rent = $_POST['initial_annual_rent']  ?? 0 ;
+     
     $first_lease            = isset($_POST['first_lease']) ? (int)$_POST['first_lease'] : 1;
+    $lease_type_id          = isset($_POST['lease_type_id1']) ? (int)$_POST['lease_type_id1'] : 0;
     $last_lease_annual_value = isset($_POST['last_lease_annual_value']) ? floatval($_POST['last_lease_annual_value']) : 0.0;
     if ($first_lease !== 0) {
         $first_lease = 1;
         $last_lease_annual_value = 0.0;
+        $initial_annual_rent = $_POST['initial_annual_rent']  ?? 0 ;
+    }else{
+        // get  revision_increase_percent from lease_master
+                $sql_master_lease = "
+                    SELECT economy_valuvation, economy_rate,revision_increase_percent
+                    FROM lease_master
+                    WHERE lease_type_id = $lease_type_id
+                ";
+                $result_master_lease = mysqli_query($con, $sql_master_lease);
+                if ($result_master_lease && mysqli_num_rows($result_master_lease) > 0) {
+                    $lease_master = mysqli_fetch_assoc($result_master_lease);
+                    $revision_increase_percent = (float)$lease_master['revision_increase_percent'];
+                } else { 
+                    $revision_increase_percent = 0;
+                }
+        $initial_annual_rent = $last_lease_annual_value * (1 + ($revision_increase_percent / 100));
     }
     // if (empty($valuation_date)) { throw new Exception('Letter Date is required'); }
     // if (empty($value_date)) { throw new Exception('Valuvation Date is required'); }
@@ -79,7 +96,7 @@ try{
     $start_date             = $_POST['start_date'] ?? '';
     $end_date               = $_POST['end_date'] ?? '';
     $duration_years         = (int)($_POST['duration_years'] ?? 0);
-    $lease_type_id          = isset($_POST['lease_type_id1']) ? (int)$_POST['lease_type_id1'] : 0;
+    
     $type_of_project        = isset($_POST['type_of_project']) ? mysqli_real_escape_string($con, $_POST['type_of_project']) : '';
     $name_of_the_project    = isset($_POST['name_of_the_project']) ? mysqli_real_escape_string($con, $_POST['name_of_the_project']) : '';
     $lease_number           = isset($_POST['lease_number']) ? mysqli_real_escape_string($con, $_POST['lease_number']) : '';
@@ -219,6 +236,8 @@ detectChange("file_number",            $oldLease['file_number'] ?? "",     $file
     $premium = $initial_annual_rent * $premium_times;
     
     }
+
+ 
 
     // ----------------------------------------------------
     // DETECT IF WE NEED FULL REBUILD + REPLAY

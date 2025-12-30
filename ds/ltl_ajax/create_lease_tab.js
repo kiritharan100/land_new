@@ -89,6 +89,8 @@
     var hidden = document.getElementById("ltl_first_lease");
     var lastGroup = document.getElementById("ltl_last_lease_group");
     var lastInput = document.getElementById("ltl_last_lease_annual_value");
+    var valuationInput = document.getElementById("ltl_valuation_amount");
+    var valuationDateInput = document.getElementById("ltl_valuation_date");
     var isFirst = checkbox ? checkbox.checked : true;
 
     if (hidden) {
@@ -99,9 +101,13 @@
       if (isFirst) {
         lastGroup.classList.add("d-none");
         if (lastInput) lastInput.removeAttribute("required");
+        if (valuationInput) valuationInput.setAttribute("required", "required");
+        if (valuationDateInput) valuationDateInput.setAttribute("required", "required");
       } else {
         lastGroup.classList.remove("d-none");
         if (lastInput) lastInput.setAttribute("required", "required");
+        if (valuationInput) valuationInput.removeAttribute("required");
+        if (valuationDateInput) valuationDateInput.removeAttribute("required");
       }
     }
   }

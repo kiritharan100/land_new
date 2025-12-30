@@ -23,7 +23,7 @@ try{
   $land_id = isset($_POST['land_id']) ? (int)$_POST['land_id'] : 0;
   $beneficiary_id = isset($_POST['beneficiary_id']) ? (int)$_POST['beneficiary_id'] : 0;
   if ($land_id<=0 || $beneficiary_id<=0) { throw new Exception('Missing land or beneficiary'); }
-
+  $lease_type_id = isset($_POST['lease_type_id']) ? (int)$_POST['lease_type_id'] : 0;
   $valuation_amount = floatval($_POST['valuation_amount'] ?? 0);
   $valuation_date = $_POST['valuation_date'] ?? '';
   $value_date = $_POST['value_date'] ?? '';
@@ -33,16 +33,31 @@ try{
   if ($first_lease !== 0) {
     $first_lease = 1;
     $last_lease_annual_value = 0.0;
+    $initial_annual_rent = $_POST['initial_annual_rent']  ?? 0 ;
+  } else {
+          // get  revision_increase_percent from lease_master
+                $sql_master_lease = "
+                    SELECT economy_valuvation, economy_rate,revision_increase_percent
+                    FROM lease_master
+                    WHERE lease_type_id = $lease_type_id
+                ";
+                $result_master_lease = mysqli_query($con, $sql_master_lease);
+                if ($result_master_lease && mysqli_num_rows($result_master_lease) > 0) {
+                    $lease_master = mysqli_fetch_assoc($result_master_lease);
+                    $revision_increase_percent = (float)$lease_master['revision_increase_percent'];
+                } else { 
+                    $revision_increase_percent = 0;
+                }
+                  $initial_annual_rent = $last_lease_annual_value * (1 + ($revision_increase_percent / 100));
   }
    
   $annual_rent_percentage = floatval($_POST['annual_rent_percentage'] ?? 0);
   $revision_period = (int)($_POST['revision_period'] ?? 0);
-  $initial_annual_rent = $_POST['initial_annual_rent']  ?? 0 ;
   $revision_percentage = floatval($_POST['revision_percentage'] ?? 0);
   $lease_start_date = $start_date = $_POST['start_date'] ?? '';
   $end_date = $_POST['end_date'] ?? '';
   $duration_years = (int)($_POST['duration_years'] ?? 0);
-  $lease_type_id = isset($_POST['lease_type_id']) ? (int)$_POST['lease_type_id'] : 0;
+
   $type_of_project = isset($_POST['type_of_project']) ? mysqli_real_escape_string($con, $_POST['type_of_project']) : '';
   $name_of_the_project = isset($_POST['name_of_the_project']) ? mysqli_real_escape_string($con, $_POST['name_of_the_project']) : '';
   $premium_input = isset($_POST['premium']) ? floatval(str_replace(',', '', $_POST['premium'])) : 0.0;
@@ -211,7 +226,7 @@ function generateLeaseSchedules(
             $annual_rent_percentage = $annual_rent_percentage;
             $lease_type_id =$lease_type_id;
             $sql_master_lease = "
-                SELECT economy_valuvation, economy_rate
+                SELECT economy_valuvation, economy_rate,revision_increase_percent
                 FROM lease_master
                 WHERE lease_type_id = $lease_type_id
             ";
@@ -220,6 +235,7 @@ function generateLeaseSchedules(
                 $lease_master = mysqli_fetch_assoc($result_master_lease);
                 $economy_rate       = (float)$lease_master['economy_rate'];
                 $economy_valuvation = (float)$lease_master['economy_valuvation'];
+                $revision_increase_percent = (float)$lease_master['revision_increase_percent'];
             } else { 
                 $economy_rate = 0;
                 $economy_valuvation = 0;
@@ -229,7 +245,7 @@ function generateLeaseSchedules(
                 if($first_lease == 1){
                     $revised_initital_rent =  $valuation_amount * $economy_rate /100;
                 }  else {
-                    $revised_initital_rent = $last_lease_annual_value;
+                    $revised_initital_rent = $last_lease_annual_value * (1 + ($revision_increase_percent / 100));
                 }  
            } else {
             $economy_rate_applicable = 0;

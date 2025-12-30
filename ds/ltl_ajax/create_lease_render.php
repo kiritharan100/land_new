@@ -357,7 +357,7 @@ if ($md5 !== ''){
                     <div class="form-check mt-2" align='center'>
                         <input type="checkbox" class="form-check-input" id="ltl_is_first_lease"
                             <?php echo $first_lease_flag ? 'checked ' : ''; ?><?php echo $existing_lease ? 'disabled ' : ''; ?> />
-                        <label class="form-check-label" for="ltl_is_first_lease">Is it a first lease</label>
+                        <label class="form-check-label" for="ltl_is_first_lease">Is it first lease ? </label>
                     </div>
                 </div>
                 <div class="col-md-4<?php echo $first_lease_flag ? ' d-none' : ''; ?>" id="ltl_last_lease_group">

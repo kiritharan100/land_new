@@ -24,8 +24,8 @@
 <?php
 $md5_ben_id = $_GET['id'] ?? '';
 $ben = null;
-$inactive_date = null;
-$inactive_reason = null;
+$land = null;
+$lease = null;
 
 function valOrPending($v){
     return trim($v) !== "" ? htmlspecialchars($v) : "<span style='color:red;font-weight:bold;'>Pending</span>";
@@ -62,7 +62,34 @@ if (!empty($md5_ben_id) && isset($con)) {
         include 'footer.php';
         exit;
     }
+
+    if ($ben) {
+        $ben_id = (int) $ben['rl_ben_id'];
+
+        $land_q = "SELECT land_id, ben_id, land_address FROM rl_land_registration WHERE ben_id = ? ORDER BY land_id DESC LIMIT 1";
+        if ($st2 = mysqli_prepare($con, $land_q)) {
+            mysqli_stmt_bind_param($st2, 'i', $ben_id);
+            mysqli_stmt_execute($st2);
+            $r2 = mysqli_stmt_get_result($st2);
+            $land = mysqli_fetch_assoc($r2);
+            mysqli_stmt_close($st2);
+        }
+
+        if ($land && isset($land['land_id'])) {
+            $lease_q = "SELECT * FROM rl_lease WHERE land_id = ? ORDER BY rl_lease_id DESC LIMIT 1";
+            if ($st3 = mysqli_prepare($con, $lease_q)) {
+                $land_id_int = (int) $land['land_id'];
+                mysqli_stmt_bind_param($st3, 'i', $land_id_int);
+                mysqli_stmt_execute($st3);
+                $r3 = mysqli_stmt_get_result($st3);
+                $lease = mysqli_fetch_assoc($r3);
+                mysqli_stmt_close($st3);
+            }
+        }
+    }
 }
+
+$lease_id = $lease['rl_lease_id'] ?? 0;
 ?>
 
 <div class="content-wrapper">
@@ -122,8 +149,8 @@ if (!empty($md5_ben_id) && isset($con)) {
                             Information</a>
                         <a href="#" class="list-group-item list-group-item-action"
                             data-target="#request_letter">Documents</a>
-                        <a href="#" class="list-group-item list-group-item-action" data-target="#create_leases">Create
-                            Leases</a>
+                        <a href="#" class="list-group-item list-group-item-action" data-target="#create_leases">
+                            <?php echo $lease_id > 0 ? 'Manage' : 'Create'; ?> Leases</a>
                         <a href="#" class="list-group-item list-group-item-action" data-target="#ltl_schedule">Schedule
                             - Settlement</a>
                         <a href="#" class="list-group-item list-group-item-action"
@@ -163,9 +190,9 @@ if (!empty($md5_ben_id) && isset($con)) {
                     </div>
 
                     <div id="create_leases" class="submenu-section d-none">
-                        <h5 class="font-weight-bold">Create Leases</h5>
+                        <h5 class="font-weight-bold"><?php echo $lease_id > 0 ? 'Manage Lease' : 'Create Lease'; ?></h5>
                         <hr>
-                        <div id="ltl-create-lease-container" data-loaded="0">
+                        <div id="rl-create-lease-container" data-loaded="0">
                             <div style="text-align:center;padding:16px">
                                 <img src="../img/Loading_icon.gif" alt="Loading..." style="width:96px;height:auto" />
                             </div>
@@ -325,6 +352,27 @@ if (!empty($md5_ben_id) && isset($con)) {
         });
     }
 
+    function loadCreateLeaseTabOnce() {
+        var cont = document.getElementById('rl-create-lease-container');
+        if (!cont || cont.getAttribute('data-loaded') === '1') return;
+        cont.innerHTML = '<div style="text-align:center;padding:16px">\
+        <img src="../img/Loading_icon.gif" alt="Loading..." style="width:96px;height:auto" />\
+      </div>';
+        var url =
+            'ajax_residential_lease/create_lease_render.php?id=<?php echo htmlspecialchars($md5_ben_id ?? "", ENT_QUOTES); ?>&_ts=' +
+            Date.now();
+        fetch(url)
+            .then(function(r) { return r.text(); })
+            .then(function(html) {
+                cont.innerHTML = html;
+                try { executeScripts(cont); } catch (e) {}
+                cont.setAttribute('data-loaded', '1');
+            })
+            .catch(function() {
+                cont.innerHTML = '<div class="text-danger">Failed to load.</div>';
+            });
+    }
+
     // Tab switching mirror from LTL
     document.querySelectorAll('#submenu-list a').forEach(function(link) {
         link.addEventListener('click', function(e) {
@@ -342,6 +390,9 @@ if (!empty($md5_ben_id) && isset($con)) {
             if (target === '#land-tab') {
                 loadLandTabOnce();
             }
+            if (target === '#create_leases') {
+                loadCreateLeaseTabOnce();
+            }
             if (target === '#request_letter') {
                 ensureDocsScriptLoaded(function() {
                     if (window.RLDocs) {
@@ -355,6 +406,9 @@ if (!empty($md5_ben_id) && isset($con)) {
     var active = document.querySelector('#submenu-list a.active');
     if (active && active.getAttribute('data-target') === '#land-tab') {
         loadLandTabOnce();
+    }
+    if (active && active.getAttribute('data-target') === '#create_leases') {
+        loadCreateLeaseTabOnce();
     }
     if (active && active.getAttribute('data-target') === '#request_letter') {
         ensureDocsScriptLoaded(function() {

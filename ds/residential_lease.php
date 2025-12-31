@@ -52,7 +52,7 @@ if (isset($con)) {
                             <th>File Number</th>
                             <th>Remind Date</th>
                             <th class="text-right">Outstanding</th>
-                            <th width="120">Action</th>
+                            <th width="150">Action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -69,6 +69,10 @@ if (isset($con)) {
                             <td><span class="text-muted">Pending</span></td>
                             <td class="text-right"><span class="text-muted">Pending</span></td>
                             <td>
+                                <a class="btn btn-sm btn-info"
+                                    href="residential_lease_open.php?id=<?= urlencode($row['md5_ben_id'] ?? '') ?>">
+                                    <i class="fa fa-folder-open"></i> Open
+                                </a>
                                 <button type="button" class="btn btn-sm btn-outline-secondary rl-edit"
                                     data-id="<?= (int)$row['rl_ben_id'] ?>">
                                     <i class="fa fa-edit"></i> Edit

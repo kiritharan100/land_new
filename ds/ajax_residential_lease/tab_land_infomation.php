@@ -134,9 +134,9 @@ require_once dirname(__DIR__, 2) . '/auth.php';
     function addBoundaryRow(lat, lng) {
         var row = document.createElement('div');
         row.className = 'form-row mb-2';
-        row.innerHTML = '<div class="col"><input type="text" class="form-control rl-lat" placeholder="Latitude" value="' +
+        row.innerHTML = '<div class="col-md-6"><input type="text" class="form-control rl-lat" placeholder="Latitude" value="' +
             (lat || '') + '"></div>' +
-            '<div class="col"><input type="text" class="form-control rl-lng" placeholder="Longitude" value="' + (lng ||
+            '<div class="col-md-6"><input type="text" class="form-control rl-lng" placeholder="Longitude" value="' + (lng ||
                 '') + '"></div>';
         boundaryList.appendChild(row);
     }
@@ -284,5 +284,12 @@ require_once dirname(__DIR__, 2) . '/auth.php';
     }, 200);
     // Delay load to allow map/init
     setTimeout(loadLand, 300);
+    // Enhance GN select with select2 if available
+    if (window.jQuery && $('#rl_gn_id').length) {
+        $('#rl_gn_id').select2({
+            width: '100%',
+            dropdownParent: $('#rl_land_form').closest('.modal, body')
+        });
+    }
 })();
 </script>

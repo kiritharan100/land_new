@@ -290,6 +290,18 @@ if (!empty($md5_ben_id) && isset($con)) {
         });
     }
 
+    function ensureDocsScriptLoaded(cb) {
+        if (window.RLDocs && typeof window.RLDocs.init === 'function') {
+            cb && cb();
+            return;
+        }
+        var s = document.createElement('script');
+        s.src = 'ajax_residential_lease/docs_tab.js?_ts=' + Date.now();
+        s.onload = function() { cb && cb(); };
+        s.onerror = function() { cb && cb(); };
+        document.head.appendChild(s);
+    }
+
     function loadLandTabOnce() {
         var container = document.getElementById('land-tab-container');
         if (!container || container.getAttribute('data-loaded') === '1') return;
@@ -330,12 +342,26 @@ if (!empty($md5_ben_id) && isset($con)) {
             if (target === '#land-tab') {
                 loadLandTabOnce();
             }
+            if (target === '#request_letter') {
+                ensureDocsScriptLoaded(function() {
+                    if (window.RLDocs) {
+                        window.RLDocs.init(MD5_BEN_ID);
+                    }
+                });
+            }
         });
     });
 
     var active = document.querySelector('#submenu-list a.active');
     if (active && active.getAttribute('data-target') === '#land-tab') {
         loadLandTabOnce();
+    }
+    if (active && active.getAttribute('data-target') === '#request_letter') {
+        ensureDocsScriptLoaded(function() {
+            if (window.RLDocs) {
+                window.RLDocs.init(MD5_BEN_ID);
+            }
+        });
     }
 })();
 </script>

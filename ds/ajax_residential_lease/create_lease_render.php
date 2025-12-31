@@ -85,24 +85,7 @@ if ($end_date_raw === '' && $start_date_raw) {
         <div class="alert alert-warning mb-0"><?php echo htmlspecialchars($error); ?></div>
         <?php else: ?>
 
-        <div class="mb-3">
-            <div class="row">
-                <div class="col-md-4">
-                    <div class="form-group mb-1">
-                        <label class="mb-0 text-muted small">Lessee</label>
-                        <div class="font-weight-bold"><?php echo htmlspecialchars($ben['name'] ?? ''); ?></div>
-                    </div>
-                </div>
-                <div class="col-md-8">
-                    <div class="form-group mb-1">
-                        <label class="mb-0 text-muted small">Land</label>
-                        <div class="font-weight-bold">
-                            <?php echo htmlspecialchars($land['land_address'] ?? ('Land #' . ($land['land_id'] ?? ''))); ?>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+ 
 
         <form id="rlCreateLeaseForm" method="post" action="">
             <?php if ($lease_id): ?>
@@ -155,15 +138,15 @@ if ($end_date_raw === '' && $start_date_raw) {
                 </div>
                 <div class="col-md-3">
                     <div class="form-group">
-                        <label>Annual Rent Percentage</label>
-                        <input type="number" step="0.01" class="form-control" id="rl_annual_rent_percentage"
+                        <label>Annual Rent Percentage (%)</label>
+                        <input type="number" step="0.01" max='20' class="form-control" id="rl_annual_rent_percentage"
                             name="annual_rent_percentage"
                             value="<?php echo htmlspecialchars($lease['annual_rent_percentage'] ?? ''); ?>">
                     </div>
                 </div>
                 <div class="col-md-3">
                     <div class="form-group">
-                        <label>Beneficiary Income</label>
+                        <label>Beneficiary Income ( Rs. per year )</label>
                         <input type="number" step="0.01" class="form-control" id="rl_ben_income" name="ben_income"
                             value="<?php echo htmlspecialchars($lease['ben_income'] ?? ''); ?>">
                     </div>
@@ -199,21 +182,21 @@ if ($end_date_raw === '' && $start_date_raw) {
             </div>
 
             <div class="row">
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <div class="form-group">
                         <label>Start Date <span class="text-danger">*</span></label>
                         <input type="date" class="form-control" id="rl_start_date" name="start_date" required
                             value="<?php echo fmtDate($start_date_raw); ?>">
                     </div>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <div class="form-group">
                         <label>End Date</label>
                         <input type="date" class="form-control" id="rl_end_date" name="end_date"
                             value="<?php echo fmtDate($end_date_raw); ?>" readonly>
                     </div>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <div class="form-group">
                         <label>Initial Annual Rent</label>
                         <input type="text" class="form-control" id="rl_initial_annual_rent" name="initial_annual_rent"
@@ -222,40 +205,29 @@ if ($end_date_raw === '' && $start_date_raw) {
                             (max 1000).</small>
                     </div>
                 </div>
+                <div class="col-md-3">
+                    <div class="form-group">
+                        <label>Premium Amount</label>
+                        <input type="number" step="0.01" class="form-control" id="rl_premium" name="premium"
+                            value="<?php echo htmlspecialchars($lease['premium'] ?? ''); ?>">
+                        <small class="text-muted">First lease: Initial Rent × 3. Otherwise 0. Editable.</small>
+                    </div>
+                </div>
             </div>
 
             <div class="row">
                 <div class="col-md-4">
                     <div class="form-group">
-                        <label>Discount Rate</label>
+                        <label>Discount Rate (%)</label>
                         <input type="number" step="0.01" class="form-control" id="rl_discount_rate" name="discount_rate"
                             value="<?php echo htmlspecialchars($discount_rate); ?>" readonly>
                     </div>
                 </div>
                 <div class="col-md-4">
                     <div class="form-group">
-                        <label>Penalty Rate</label>
+                        <label>Penalty Rate (%)</label>
                         <input type="number" step="0.01" class="form-control" id="rl_penalty_rate" name="penalty_rate"
                             value="<?php echo htmlspecialchars($penalty_rate); ?>" readonly>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="form-group">
-                        <label>Outright Grants Number</label>
-                        <input type="text" class="form-control" id="rl_outright_grants_number"
-                            name="outright_grants_number"
-                            value="<?php echo htmlspecialchars($lease['outright_grants_number'] ?? ''); ?>">
-                    </div>
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="col-md-4">
-                    <div class="form-group">
-                        <label>Outright Grants Date</label>
-                        <input type="date" class="form-control" id="rl_outright_grants_date"
-                            name="outright_grants_date"
-                            value="<?php echo fmtDate($lease['outright_grants_date'] ?? null); ?>">
                     </div>
                 </div>
             </div>
@@ -271,11 +243,50 @@ if ($end_date_raw === '' && $start_date_raw) {
             </div>
         </form>
 
+        <?php if ($lease): ?>
+        <hr>
+        <h5 class="font-weight-bold mb-3">Update Grant Details</h5>
+        <form id="rlGrantDetailsForm">
+            <input type="hidden" name="rl_lease_id" value="<?php echo (int) $lease_id; ?>">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label>Outright Grants Number</label>
+                        <input type="text" class="form-control" id="rl_grant_outright_grants_number"
+                            name="outright_grants_number"
+                            value="<?php echo htmlspecialchars($lease['outright_grants_number'] ?? ''); ?>">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label>Outright Grants Date</label>
+                        <input type="date" class="form-control" id="rl_grant_outright_grants_date"
+                            name="outright_grants_date"
+                            value="<?php echo fmtDate($lease['outright_grants_date'] ?? null); ?>">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label>&nbsp;</label>
+                        <div>
+                            <button type="button" class="btn btn-primary" id="rl_grant_save_btn">
+                                <i class="fa fa-save"></i> Save Grant Details
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+        <?php endif; ?>
+
         <?php endif; ?>
     </div>
 </div>
 
 <script src="ajax_residential_lease/create_lease_tab.js?_ts=<?php echo time(); ?>"></script>
+<?php if ($lease): ?>
+<script src="ajax_residential_lease/grant_details_tab.js?_ts=<?php echo time(); ?>"></script>
+<?php endif; ?>
 <script>
 (function initRLLeaseForm() {
     var hasExisting = <?php echo $lease ? 'true' : 'false'; ?>;

@@ -51,6 +51,7 @@ $discount_rate = (isset($_POST['discount_rate']) && $_POST['discount_rate'] !== 
 $penalty_rate = (isset($_POST['penalty_rate']) && $_POST['penalty_rate'] !== '') ? (float) $_POST['penalty_rate'] : 10.0;
 $outright_grants_number = trim($_POST['outright_grants_number'] ?? '');
 $outright_grants_date = clean_date($_POST['outright_grants_date'] ?? null);
+$premium = isset($_POST['premium']) ? (float) $_POST['premium'] : null;
 
 if ($rl_lease_id <= 0) {
     json_response(false, 'Lease id is required for update.');
@@ -156,6 +157,16 @@ if (!$is_first && array_key_exists('initial_annual_rent', $_POST)) {
     $initial_annual_rent = calculate_initial_rent($lease_calculation_basic, $valuation_amount, $annual_rent_percentage, $ben_income);
 }
 
+// Calculate premium if not provided: first lease = initial_annual_rent * 3, otherwise 0
+// Allow user-modified values to persist
+if ($premium === null) {
+    if (isset($existing['premium'])) {
+        $premium = (float) $existing['premium'];
+    } else {
+        $premium = $is_first ? ($initial_annual_rent * 3) : 0;
+    }
+}
+
 $sql = "UPDATE rl_lease SET
             land_id=?,
             beneficiary_id=?,
@@ -166,6 +177,7 @@ $sql = "UPDATE rl_lease SET
             valuation_amount=?,
             valuvation_date=?,
             valuvation_letter_date=?,
+            premium=?,
             start_date=?,
             end_date=?,
             status=?,
@@ -181,7 +193,7 @@ $sql = "UPDATE rl_lease SET
 
 if ($stmt = $con->prepare($sql)) {
     $stmt->bind_param(
-        'iiissidssssssdddddssi',
+        'iiissidssdssssdddddssi',
         $land_id,
         $beneficiary_id,
         $location_id,
@@ -191,6 +203,7 @@ if ($stmt = $con->prepare($sql)) {
         $valuation_amount,
         $valuation_date,
         $valuation_letter_date,
+        $premium,
         $start_date,
         $end_date,
         $status,

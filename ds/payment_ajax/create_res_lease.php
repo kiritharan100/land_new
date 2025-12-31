@@ -50,6 +50,7 @@ $discount_rate = (isset($_POST['discount_rate']) && $_POST['discount_rate'] !== 
 $penalty_rate = (isset($_POST['penalty_rate']) && $_POST['penalty_rate'] !== '') ? (float) $_POST['penalty_rate'] : 10.0;
 $outright_grants_number = trim($_POST['outright_grants_number'] ?? '');
 $outright_grants_date = clean_date($_POST['outright_grants_date'] ?? null);
+$premium = isset($_POST['premium']) ? (float) $_POST['premium'] : 0;
 
 if ($land_id <= 0 || $beneficiary_id <= 0) {
     json_response(false, 'Land and beneficiary are required to create a lease.');
@@ -119,19 +120,24 @@ if (!$is_first && isset($_POST['initial_annual_rent'])) {
     $initial_annual_rent = calculate_initial_rent($lease_calculation_basic, $valuation_amount, $annual_rent_percentage, $ben_income);
 }
 
+// Calculate premium if not provided: first lease = initial_annual_rent * 3, otherwise 0
+if (!isset($_POST['premium']) || $_POST['premium'] === '') {
+    $premium = $is_first ? ($initial_annual_rent * 3) : 0;
+}
+
 $sql = "INSERT INTO rl_lease (
             land_id, beneficiary_id, location_id,
             lease_number, file_number, is_it_first_ease,
             valuation_amount, valuvation_date, valuvation_letter_date,
-            start_date, end_date, status,
+            premium, start_date, end_date, status,
             lease_calculation_basic, annual_rent_percentage, ben_income,
             initial_annual_rent, discount_rate, penalty_rate,
             outright_grants_number, outright_grants_date
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
 if ($stmt = $con->prepare($sql)) {
     $stmt->bind_param(
-        'iiissidssssssdddddss',
+        'iiissidssdssssdddddss',
         $land_id,
         $beneficiary_id,
         $location_id,
@@ -141,6 +147,7 @@ if ($stmt = $con->prepare($sql)) {
         $valuation_amount,
         $valuation_date,
         $valuation_letter_date,
+        $premium,
         $start_date,
         $end_date,
         $status,

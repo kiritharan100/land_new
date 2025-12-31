@@ -15,6 +15,7 @@
     annualPctInput,
     incomeInput,
     initialRentInput,
+    premiumInput,
     discountInput,
     penaltyInput;
 
@@ -132,6 +133,38 @@
         initialRentInput.value = "";
       }
     }
+    // Compute premium after initial rent is set
+    computePremium();
+  }
+
+  function computePremium() {
+    if (!premiumInput) return;
+    var isFirst = firstSelect ? firstSelect.value === "1" : true;
+    var initialRent = parseFloatSafe(initialRentInput ? initialRentInput.value : 0);
+    var premium = 0;
+
+    if (isFirst) {
+      premium = initialRent * 3;
+    } else {
+      premium = 0;
+    }
+
+    // Only auto-fill if the field is empty or was auto-calculated before
+    // Check if user has manually modified by comparing to expected value
+    var currentVal = parseFloatSafe(premiumInput.value);
+    var expectedVal = isFirst ? initialRent * 3 : 0;
+    
+    // If the premium field is empty, or matches the expected calculated value (or close to it), update it
+    if (premiumInput.value === "" || Math.abs(currentVal - expectedVal) < 0.01 || premiumInput.getAttribute("data-auto-calculated") === "1") {
+      premiumInput.value = premium.toFixed(2);
+      premiumInput.setAttribute("data-auto-calculated", "1");
+    }
+  }
+
+  function onPremiumManualChange() {
+    if (premiumInput) {
+      premiumInput.removeAttribute("data-auto-calculated");
+    }
   }
 
   function lockReadOnlyFields() {
@@ -228,6 +261,7 @@
       annualPctInput = document.getElementById("rl_annual_rent_percentage");
       incomeInput = document.getElementById("rl_ben_income");
       initialRentInput = document.getElementById("rl_initial_annual_rent");
+      premiumInput = document.getElementById("rl_premium");
       discountInput = document.getElementById("rl_discount_rate");
       penaltyInput = document.getElementById("rl_penalty_rate");
       valuvationDateInput = document.getElementById("rl_valuvation_date");
@@ -312,6 +346,7 @@
       toggleFirstLeaseRequired();
       toggleBasisRequired();
       computeInitialRent();
+      computePremium();
     };
 
     if (window.Swal) {
@@ -356,6 +391,11 @@
       el.addEventListener("blur", computeInitialRent);
       el.addEventListener("keyup", computeInitialRent);
     });
+    // Premium manual change tracking
+    if (premiumInput) {
+      premiumInput.addEventListener("input", onPremiumManualChange);
+      premiumInput.addEventListener("keyup", onPremiumManualChange);
+    }
     if (form) {
       if (!form.getAttribute("data-rl-bound")) {
         form.addEventListener("submit", onSubmit);
@@ -390,6 +430,7 @@
     annualPctInput = document.getElementById("rl_annual_rent_percentage");
     incomeInput = document.getElementById("rl_ben_income");
     initialRentInput = document.getElementById("rl_initial_annual_rent");
+    premiumInput = document.getElementById("rl_premium");
     discountInput = document.getElementById("rl_discount_rate");
     penaltyInput = document.getElementById("rl_penalty_rate");
 
@@ -397,9 +438,13 @@
     toggleFirstLeaseRequired();
     toggleBasisRequired();
     computeInitialRent();
+    computePremium();
     setEndDate(false);
     // run once more after a short delay in case values are populated asynchronously
-    setTimeout(computeInitialRent, 50);
+    setTimeout(function() {
+      computeInitialRent();
+      computePremium();
+    }, 50);
     // periodic safeguard to recompute if fields change outside listeners
     var lastSig = "";
     setInterval(function() {
@@ -407,11 +452,14 @@
         basisSelect ? basisSelect.value : "",
         valuationInput ? valuationInput.value : "",
         annualPctInput ? annualPctInput.value : "",
-        incomeInput ? incomeInput.value : ""
+        incomeInput ? incomeInput.value : "",
+        firstSelect ? firstSelect.value : "",
+        initialRentInput ? initialRentInput.value : ""
       ].join("|");
       if (sig !== lastSig) {
         lastSig = sig;
         computeInitialRent();
+        computePremium();
       }
     }, 500);
 

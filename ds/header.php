@@ -296,6 +296,16 @@ $company_id = $_SESSION['customer'];
                     </li>
                     <?php endif; ?>
 
+                    <?php if (hasPermission(28)): ?>
+                    <li class="<?php $url='residential_lease.php'; if($url == $current_url){echo "active";}?> treeview">
+                        <a class="waves-effect waves-dark" href="<?php echo $url; ?>">
+                            <i class="fa fa-folder-open"></i><span> Residential lease</span>
+                        </a>
+                    </li>
+                    <?php endif; ?>
+
+
+
                     <?php if (hasPermission(25)): ?>
                     <li class="<?php $url='other_payment.php'; if($url == $current_url){echo "active";}?> treeview">
                         <a class="waves-effect waves-dark" href="<?php echo $url; ?>">
@@ -303,6 +313,8 @@ $company_id = $_SESSION['customer'];
                         </a>
                     </li>
                     <?php endif; ?>
+
+
 
 
                     <?php if (hasPermission(117)): ?>

@@ -74,23 +74,83 @@ try {
           WHERE x.annexure09_sent = 0
             AND x.remind_date <= CURDATE()";
 
+  $ltlPendingCnt = 0;
   if ($stmt = mysqli_prepare($con, $sql)) {
     if ($types !== '') {
       mysqli_stmt_bind_param($stmt, $types, ...$params);
     }
     if (mysqli_stmt_execute($stmt)) {
-      mysqli_stmt_bind_result($stmt, $pendingCnt);
+      mysqli_stmt_bind_result($stmt, $ltlPendingCnt);
       mysqli_stmt_fetch($stmt);
-      $res['pending_count'] = (int)$pendingCnt;
-      $res['success'] = true;
-      $res['message'] = 'OK';
-    } else {
-      $res['message'] = 'Execution failed';
     }
     mysqli_stmt_close($stmt);
-  } else {
-    $res['message'] = 'Preparation failed';
   }
+
+  // Residential Lease pending reminders
+  $rlRemindExpr = "DATE(
+    DATE_ADD(
+        MAKEDATE(YEAR(CURDATE()), 1)
+        + INTERVAL (MONTH(rl.start_date) - 1) MONTH
+        + INTERVAL (DAY(rl.start_date) - 1) DAY
+        - INTERVAL 1 MONTH,
+        INTERVAL (YEAR(CURDATE()) - YEAR(
+            MAKEDATE(YEAR(CURDATE()), 1)
+            + INTERVAL (MONTH(rl.start_date) - 1) MONTH
+            + INTERVAL (DAY(rl.start_date) - 1) DAY
+            - INTERVAL 1 MONTH
+        )) YEAR
+    )
+  )";
+
+  $rlFilters = ['rl.rl_lease_id IS NOT NULL'];
+  $rlTypes = '';
+  $rlParams = [];
+  if ($locParam !== null) {
+    $rlFilters[] = 'rb.location_id = ?';
+    $rlTypes .= 'i';
+    $rlParams[] = $locParam;
+  }
+  $rlWhereSql = $rlFilters ? 'WHERE ' . implode(' AND ', $rlFilters) : '';
+
+  $rlSql = "SELECT COUNT(*) AS pending_cnt
+          FROM (
+            SELECT 
+              {$rlRemindExpr} AS remind_date,
+              (
+                SELECT COUNT(*)
+                FROM rl_reminders rr
+                WHERE rr.lease_id = rl.rl_lease_id
+                  AND rr.reminders_type = 'Annexure 09'
+                  AND rr.status = 1
+                  AND rr.sent_date BETWEEN DATE_SUB({$rlRemindExpr}, INTERVAL 45 DAY)
+                      AND STR_TO_DATE(CONCAT(YEAR({$rlRemindExpr}), '-12-31'), '%Y-%m-%d')
+              ) AS annexure09_sent
+            FROM rl_beneficiaries rb
+            LEFT JOIN rl_land_registration rland ON rland.ben_id = rb.rl_ben_id
+            LEFT JOIN rl_lease rl ON rl.land_id = rland.land_id
+            $rlWhereSql
+          ) x
+          WHERE x.annexure09_sent = 0
+            AND x.remind_date <= CURDATE()";
+
+  $rlPendingCnt = 0;
+  if ($rlStmt = mysqli_prepare($con, $rlSql)) {
+    if ($rlTypes !== '') {
+      mysqli_stmt_bind_param($rlStmt, $rlTypes, ...$rlParams);
+    }
+    if (mysqli_stmt_execute($rlStmt)) {
+      mysqli_stmt_bind_result($rlStmt, $rlPendingCnt);
+      mysqli_stmt_fetch($rlStmt);
+    }
+    mysqli_stmt_close($rlStmt);
+  }
+
+  // Combined count
+  $res['pending_count'] = (int)$ltlPendingCnt + (int)$rlPendingCnt;
+  $res['ltl_pending'] = (int)$ltlPendingCnt;
+  $res['rl_pending'] = (int)$rlPendingCnt;
+  $res['success'] = true;
+  $res['message'] = 'OK';
 
 } catch (Throwable $e) {
   $res['message'] = 'Error: ' . $e->getMessage();

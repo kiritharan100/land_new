@@ -161,6 +161,50 @@ if ($lease && isset($lease['rl_lease_id'])) {
         mysqli_stmt_close($st);
     }
 }
+
+// Grant Payment Balance calculations
+$grant_total_valuation = 0.0;
+$grant_rent_premium_discount_paid = 0.0;
+$grant_valuation_payments = 0.0;
+$grant_balance_to_pay = 0.0;
+
+if ($lease && isset($lease['rl_lease_id'])) {
+    $lid = (int)$lease['rl_lease_id'];
+    $grant_total_valuation = (float)($lease['valuation_amount'] ?? 0);
+    
+    // Sum of paid_rent + premium_paid + discount_apply from schedules
+    $sql_grant = "SELECT 
+        COALESCE(SUM(paid_rent), 0) AS total_rent_paid,
+        COALESCE(SUM(premium_paid), 0) AS total_premium_paid,
+        COALESCE(SUM(discount_apply), 0) AS total_discount
+        FROM rl_lease_schedules 
+        WHERE lease_id = ?";
+    if ($stg = mysqli_prepare($con, $sql_grant)) {
+        mysqli_stmt_bind_param($stg, 'i', $lid);
+        mysqli_stmt_execute($stg);
+        $rsg = mysqli_stmt_get_result($stg);
+        if ($rowg = mysqli_fetch_assoc($rsg)) {
+            $grant_rent_premium_discount_paid = (float)$rowg['total_rent_paid'] + (float)$rowg['total_premium_paid'] + (float)$rowg['total_discount'];
+        }
+        mysqli_stmt_close($stg);
+    }
+    
+    // Valuation payments
+    $sql_val = "SELECT COALESCE(SUM(amount), 0) AS total FROM rl_valuvation_paid WHERE rl_lease_id = ? AND status = 1";
+    if ($stv = mysqli_prepare($con, $sql_val)) {
+        mysqli_stmt_bind_param($stv, 'i', $lid);
+        mysqli_stmt_execute($stv);
+        $rsv = mysqli_stmt_get_result($stv);
+        if ($rowv = mysqli_fetch_assoc($rsv)) {
+            $grant_valuation_payments = (float)$rowv['total'];
+        }
+        mysqli_stmt_close($stv);
+    }
+    
+    // Total paid towards grant = rent+premium+discount + valuation payments
+    $grant_total_paid = $grant_rent_premium_discount_paid + $grant_valuation_payments;
+    $grant_balance_to_pay = max(0, $grant_total_valuation - $grant_total_paid);
+}
 ?>
 <div class="card" id="rl-lease-dashboard-card">
     <div class="card-block" style="padding:1rem;">
@@ -224,6 +268,33 @@ if ($lease && isset($lease['rl_lease_id'])) {
                     <div class="card-header p-2" style='padding-bottom: 0px;'><strong>Payment Composition (Active Payments)</strong></div>
                     <div class="card-block p-2">
                         <div id="rl-payments-pie" style="height:175px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Payment Balance for Grant Pie Chart -->
+            <div class="col-md-6 mb-3">
+                <div class="card h-100">
+                    <div class="card-header p-2" style='padding-bottom: 0px;'><strong>Payment Balance for Grant</strong></div>
+                    <div class="card-block p-2">
+                        <div id="rl-grant-balance-pie" style="height:200px;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <div class="card h-100">
+                    <div class="card-header p-2" style='padding-bottom: 0px;'><strong>Grant Summary</strong></div>
+                    <div class="card-block p-2" style="font-size:0.9rem;">
+                        <div><strong>Total Valuation:</strong> Rs. <?= number_format($grant_total_valuation, 2) ?></div>
+                        <div><strong>Rent + Premium + Discount Paid:</strong> Rs. <?= number_format($grant_rent_premium_discount_paid, 2) ?></div>
+                        <div><strong>Valuation Payments:</strong> Rs. <?= number_format($grant_valuation_payments, 2) ?></div>
+                        <hr style="margin:8px 0;">
+                        <div style="font-size:1.1rem;<?= $grant_balance_to_pay <= 0 ? 'color:#28a745;' : 'color:#dc3545;' ?>">
+                            <strong>Balance to be Paid:</strong> Rs. <?= number_format($grant_balance_to_pay, 2) ?>
+                            <?php if ($grant_balance_to_pay <= 0): ?> ✓<?php endif; ?>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -357,42 +428,83 @@ if ($lease && isset($lease['rl_lease_id'])) {
 
     function renderChart() {
         if (typeof Highcharts === 'undefined') return; // give up silently
-        var container = document.getElementById('rl-payments-pie');
-        if (!container) return;
         
-        Highcharts.chart('rl-payments-pie', {
-            chart: {
-                type: 'pie',
-                backgroundColor: 'transparent'
-            },
-            title: {
-                text: null
-            },
-            tooltip: {
-                pointFormat: '<b>{point.y:,.2f}</b>'
-            },
-            credits: {
-                enabled: false
-            },
-            plotOptions: {
-                pie: {
-                    dataLabels: {
-                        enabled: true,
-                        format: '{point.name}: {point.y:,.0f}'
+        // Payment Composition Pie Chart
+        var container = document.getElementById('rl-payments-pie');
+        if (container) {
+            Highcharts.chart('rl-payments-pie', {
+                chart: {
+                    type: 'pie',
+                    backgroundColor: 'transparent'
+                },
+                title: {
+                    text: null
+                },
+                tooltip: {
+                    pointFormat: '<b>{point.y:,.2f}</b>'
+                },
+                credits: {
+                    enabled: false
+                },
+                plotOptions: {
+                    pie: {
+                        dataLabels: {
+                            enabled: true,
+                            format: '{point.name}: {point.y:,.0f}'
+                        }
                     }
-                }
-            },
-            series: [{
-                name: 'Payments',
-                colorByPoint: true,
-                data: [
-                    { name: 'Premium Paid', y: <?= json_encode($payment_mix['premium']) ?> },
-                    { name: 'Penalty Paid', y: <?= json_encode($payment_mix['penalty']) ?> },
-                    { name: 'Rent Paid', y: <?= json_encode($payment_mix['rent']) ?> },
-                    { name: 'Discount Applied', y: <?= json_encode($payment_mix['discount']) ?> }
-                ]
-            }]
-        });
+                },
+                series: [{
+                    name: 'Payments',
+                    colorByPoint: true,
+                    data: [
+                        { name: 'Premium Paid', y: <?= json_encode($payment_mix['premium']) ?> },
+                        { name: 'Penalty Paid', y: <?= json_encode($payment_mix['penalty']) ?> },
+                        { name: 'Rent Paid', y: <?= json_encode($payment_mix['rent']) ?> },
+                        { name: 'Discount Applied', y: <?= json_encode($payment_mix['discount']) ?> }
+                    ]
+                }]
+            });
+        }
+        
+        // Grant Balance Pie Chart
+        var grantContainer = document.getElementById('rl-grant-balance-pie');
+        if (grantContainer) {
+            var grantPaid = <?= json_encode($grant_rent_premium_discount_paid + $grant_valuation_payments) ?>;
+            var grantBalance = <?= json_encode($grant_balance_to_pay) ?>;
+            
+            Highcharts.chart('rl-grant-balance-pie', {
+                chart: {
+                    type: 'pie',
+                    backgroundColor: 'transparent'
+                },
+                title: {
+                    text: null
+                },
+                tooltip: {
+                    pointFormat: '<b>Rs. {point.y:,.2f}</b>'
+                },
+                credits: {
+                    enabled: false
+                },
+                plotOptions: {
+                    pie: {
+                        dataLabels: {
+                            enabled: true,
+                            format: '{point.name}: Rs. {point.y:,.0f}'
+                        }
+                    }
+                },
+                series: [{
+                    name: 'Grant Balance',
+                    colorByPoint: true,
+                    data: [
+                        { name: 'Paid (Rent+Premium+Discount)', y: grantPaid, color: '#28a745' },
+                        { name: 'Balance to be Paid', y: grantBalance, color: '#dc3545' }
+                    ]
+                }]
+            });
+        }
     }
 })();
 </script>

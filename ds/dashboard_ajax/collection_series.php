@@ -25,6 +25,7 @@ $amounts = [];
 $typesBase = 's';
 
 foreach ($months as $m) {
+    // Long Term Lease payments
     $sql = "SELECT COALESCE(SUM(lp.amount),0) AS amt
             FROM lease_payments lp
             INNER JOIN leases l ON lp.lease_id = l.lease_id
@@ -35,19 +36,40 @@ foreach ($months as $m) {
         $types .= 'i';
         $params[] = $locParam;
     }
-    $amt = 0.0;
+    $ltlAmt = 0.0;
     if ($st = mysqli_prepare($con,$sql)) {
         mysqli_stmt_bind_param($st,$types,...$params);
         if (mysqli_stmt_execute($st)) {
-            mysqli_stmt_bind_result($st,$amt);
+            mysqli_stmt_bind_result($st,$ltlAmt);
             mysqli_stmt_fetch($st);
         }
         mysqli_stmt_close($st);
-    } else {
-        // On prepare failure push null to indicate gap
-        $amt = null;
     }
-    $amounts[] = $amt === null ? null : round((float)$amt,2);
+
+    // Residential Lease payments
+    $rlSql = "SELECT COALESCE(SUM(rlp.amount),0) AS amt
+              FROM rl_lease_payments rlp
+              INNER JOIN rl_lease rl ON rlp.lease_id = rl.rl_lease_id
+              WHERE rlp.status=1 AND DATE_FORMAT(rlp.payment_date,'%Y-%m') = ?";
+    $rlTypes = $typesBase; $rlParams = [$m['ym']];
+    if ($locParam !== null) {
+        $rlSql .= " AND rl.location_id = ?";
+        $rlTypes .= 'i';
+        $rlParams[] = $locParam;
+    }
+    $rlAmt = 0.0;
+    if ($rlSt = mysqli_prepare($con,$rlSql)) {
+        mysqli_stmt_bind_param($rlSt,$rlTypes,...$rlParams);
+        if (mysqli_stmt_execute($rlSt)) {
+            mysqli_stmt_bind_result($rlSt,$rlAmt);
+            mysqli_stmt_fetch($rlSt);
+        }
+        mysqli_stmt_close($rlSt);
+    }
+
+    // Combined total
+    $totalAmt = (float)$ltlAmt + (float)$rlAmt;
+    $amounts[] = round($totalAmt, 2);
 }
 
 // If all amounts are null, signal failure

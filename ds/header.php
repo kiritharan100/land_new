@@ -175,8 +175,15 @@ $company_id = $_SESSION['customer'];
                                 <i class="fa fa-arrow-down" aria-hidden="true"></i>
                             </a>
                             <ul class="dropdown-menu settings-menu">
+                            <?php if (hasPermission(12)): ?>        
                                 <li><a href="long_term_lease.php">Long Term Lease</a></li>
+                            <?php endif; ?>
+                            <?php if (hasPermission(28)): ?>
+                                <li><a href="residential_lease.php">Residential Lease</a></li>
+                            <?php endif; ?>
+                            <?php if (hasPermission(16)): ?>
                                 <li><a href="reports.php">Reports</a></li>
+                            <?php endif; ?>
                             </ul>
                         </li>
 

@@ -18,6 +18,7 @@ if (isset($_GET['location_id']) && $_GET['location_id'] !== '') {
 }
 
 // Build query joining leases so we only sum payments belonging to leases at given location
+// Long Term Lease payments
 $sql = "SELECT COALESCE(SUM(lp.amount),0) AS monthly_amount, COUNT(DISTINCT lp.lease_id) AS lease_count
         FROM lease_payments lp
         INNER JOIN leases l ON lp.lease_id = l.lease_id
@@ -32,19 +33,49 @@ if ($locParam !== null) {
     $params[] = $locParam;
 }
 
-$monthlyAmount = 0.0; $leaseCount = 0;
+$ltlAmount = 0.0; $ltlCount = 0;
 if ($stmt = mysqli_prepare($con, $sql)) {
     mysqli_stmt_bind_param($stmt, $types, ...$params);
     mysqli_stmt_execute($stmt);
-    mysqli_stmt_bind_result($stmt, $monthlyAmount, $leaseCount);
+    mysqli_stmt_bind_result($stmt, $ltlAmount, $ltlCount);
     mysqli_stmt_fetch($stmt);
     mysqli_stmt_close($stmt);
 }
+
+// Residential Lease payments
+$rlSql = "SELECT COALESCE(SUM(rlp.amount),0) AS monthly_amount, COUNT(DISTINCT rlp.lease_id) AS lease_count
+          FROM rl_lease_payments rlp
+          INNER JOIN rl_lease rl ON rlp.lease_id = rl.rl_lease_id
+          WHERE rlp.status=1 AND DATE_FORMAT(rlp.payment_date,'%Y-%m') = ?";
+
+$rlTypes = 's';
+$rlParams = [$month];
+
+if ($locParam !== null) {
+    $rlSql .= " AND rl.location_id = ?";
+    $rlTypes .= 'i';
+    $rlParams[] = $locParam;
+}
+
+$rlAmount = 0.0; $rlCount = 0;
+if ($rlStmt = mysqli_prepare($con, $rlSql)) {
+    mysqli_stmt_bind_param($rlStmt, $rlTypes, ...$rlParams);
+    mysqli_stmt_execute($rlStmt);
+    mysqli_stmt_bind_result($rlStmt, $rlAmount, $rlCount);
+    mysqli_stmt_fetch($rlStmt);
+    mysqli_stmt_close($rlStmt);
+}
+
+// Combined totals
+$monthlyAmount = (float)$ltlAmount + (float)$rlAmount;
+$leaseCount = (int)$ltlCount + (int)$rlCount;
 
 echo json_encode([
   'success' => true,
   'month' => $month,
   'location_id' => $locParam,
-  'amount' => round((float)$monthlyAmount, 2),
-  'lease_count' => (int)$leaseCount
+  'amount' => round($monthlyAmount, 2),
+  'lease_count' => $leaseCount,
+  'ltl_amount' => round((float)$ltlAmount, 2),
+  'rl_amount' => round((float)$rlAmount, 2)
 ]);

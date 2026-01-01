@@ -313,7 +313,7 @@ if ($end_date_raw === '' && $start_date_raw) {
             <div class="col-sm-12">
                 <div class="mb-0" role="alert"
                     style="background:#f8f9fa;border:2px solid <?php echo $grant_fields_enabled ? '#28a745' : '#17a2b8'; ?>;color:#333;font-size:1rem;font-weight:500;padding:12px 16px;border-radius:6px;">
-                    <span style="font-weight:700;text-transform:uppercase;">Valuation Summary:</span><br>
+     
                     Total Valuation: <strong>Rs. <?php echo number_format($total_valuation, 2); ?></strong> &nbsp;|
                     Rent + Premium + Discount Paid: <strong>Rs. <?php echo number_format($total_settled, 2); ?></strong> &nbsp;|
                     Valuation Payments: <strong>Rs. <?php echo number_format($valuation_payments_total, 2); ?></strong><br>

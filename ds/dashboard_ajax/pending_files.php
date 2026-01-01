@@ -46,23 +46,63 @@ $sql = "SELECT COUNT(*) AS pending_cnt
         ) l ON l.beneficiary_id = b.ben_id
         $whereSql";
 
+$ltlPendingCnt = 0;
 if ($stmt = mysqli_prepare($con, $sql)) {
   if ($types !== '') {
     mysqli_stmt_bind_param($stmt, $types, ...$params);
   }
   if (mysqli_stmt_execute($stmt)) {
-    mysqli_stmt_bind_result($stmt, $pendingCnt);
+    mysqli_stmt_bind_result($stmt, $ltlPendingCnt);
     mysqli_stmt_fetch($stmt);
-    $res['pending_count'] = (int)$pendingCnt;
-    $res['success'] = true;
-    $res['message'] = 'OK';
-  } else {
-    $res['message'] = 'Execution failed';
   }
   mysqli_stmt_close($stmt);
-} else {
-  $res['message'] = 'Preparation failed';
 }
+
+// Residential Lease pending files
+$rlFilters = [];
+$rlTypes = '';
+$rlParams = [];
+if ($locParam !== null) {
+  $rlFilters[] = 'rb.location_id = ?';
+  $rlTypes .= 'i';
+  $rlParams[] = $locParam;
+}
+$rlWhereParts = $rlFilters;
+$rlWhereParts[] = "(rl.rl_lease_id IS NULL OR rl.file_number IS NULL OR rl.file_number = '' OR rl.file_number = 'Pending')";
+$rlWhereSql = 'WHERE ' . implode(' AND ', $rlWhereParts);
+
+$rlSql = "SELECT COUNT(*) AS pending_cnt
+        FROM rl_beneficiaries rb
+        LEFT JOIN rl_land_registration rland ON rland.ben_id = rb.rl_ben_id
+        LEFT JOIN (
+          SELECT rl2.land_id, rl2.file_number, rl2.rl_lease_id
+          FROM rl_lease rl2
+          INNER JOIN (
+            SELECT land_id, MAX(rl_lease_id) AS max_id
+            FROM rl_lease
+            GROUP BY land_id
+          ) rlm ON rlm.land_id = rl2.land_id AND rlm.max_id = rl2.rl_lease_id
+        ) rl ON rl.land_id = rland.land_id
+        $rlWhereSql";
+
+$rlPendingCnt = 0;
+if ($rlStmt = mysqli_prepare($con, $rlSql)) {
+  if ($rlTypes !== '') {
+    mysqli_stmt_bind_param($rlStmt, $rlTypes, ...$rlParams);
+  }
+  if (mysqli_stmt_execute($rlStmt)) {
+    mysqli_stmt_bind_result($rlStmt, $rlPendingCnt);
+    mysqli_stmt_fetch($rlStmt);
+  }
+  mysqli_stmt_close($rlStmt);
+}
+
+// Combined count
+$res['pending_count'] = (int)$ltlPendingCnt + (int)$rlPendingCnt;
+$res['ltl_pending'] = (int)$ltlPendingCnt;
+$res['rl_pending'] = (int)$rlPendingCnt;
+$res['success'] = true;
+$res['message'] = 'OK';
 
 } catch (Throwable $e) {
   $res['message'] = 'Error: ' . $e->getMessage();

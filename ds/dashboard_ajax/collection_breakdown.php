@@ -31,6 +31,7 @@ try {
   }
   $whereSql = $filters ? 'WHERE ' . implode(' AND ', $filters) : '';
 
+  // Long Term Lease types
   $sql = "SELECT 
             IFNULL(l.type_of_project, 'Unknown') AS lease_type,
             COUNT(*) AS total_cnt
@@ -57,15 +58,53 @@ try {
         $response['types'][] = ['name' => $name, 'count' => $count];
         $response['total'] += $count;
       }
-      $response['success'] = true;
-      $response['message'] = 'OK';
-    } else {
-      $response['message'] = 'Execution failed';
     }
     mysqli_stmt_close($stmt);
-  } else {
-    $response['message'] = 'Preparation failed';
   }
+
+  // Residential Lease count (as a separate type)
+  $rlFilters = [];
+  $rlTypesStr = '';
+  $rlParams = [];
+  if ($locParam !== null) {
+    $rlFilters[] = 'rb.location_id = ?';
+    $rlTypesStr .= 'i';
+    $rlParams[] = $locParam;
+  }
+  $rlWhereSql = $rlFilters ? 'WHERE ' . implode(' AND ', $rlFilters) : '';
+
+  $rlSql = "SELECT COUNT(*) AS total_cnt
+            FROM rl_lease rl
+            INNER JOIN rl_land_registration rland ON rl.land_id = rland.land_id
+            INNER JOIN rl_beneficiaries rb ON rland.ben_id = rb.rl_ben_id
+            INNER JOIN (
+              SELECT land_id, MAX(rl_lease_id) AS max_id
+              FROM rl_lease
+              GROUP BY land_id
+            ) rlm ON rlm.max_id = rl.rl_lease_id
+            $rlWhereSql";
+
+  $rlCount = 0;
+  if ($rlStmt = mysqli_prepare($con, $rlSql)) {
+    if ($rlTypesStr !== '') {
+      mysqli_stmt_bind_param($rlStmt, $rlTypesStr, ...$rlParams);
+    }
+    if (mysqli_stmt_execute($rlStmt)) {
+      mysqli_stmt_bind_result($rlStmt, $rlCount);
+      mysqli_stmt_fetch($rlStmt);
+    }
+    mysqli_stmt_close($rlStmt);
+  }
+
+  // Add Residential Lease as a type
+  if ((int)$rlCount > 0) {
+    $response['types'][] = ['name' => 'Residential Lease', 'count' => (int)$rlCount];
+    $response['total'] += (int)$rlCount;
+  }
+
+  $response['success'] = true;
+  $response['message'] = 'OK';
+
 } catch (Throwable $e) {
   $response['message'] = 'Error: ' . $e->getMessage();
 }

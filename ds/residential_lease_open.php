@@ -203,6 +203,7 @@ if ($land && !empty($land['land_id'])) {
                         <a href="#" class="list-group-item list-group-item-action"
                             data-target="#ltl_schedule_payment">Schedule - Payment</a>
                         <a href="#" class="list-group-item list-group-item-action" data-target="#payment">Payment</a>
+                        <a href="#" class="list-group-item list-group-item-action" data-target="#payment_valuation">Payment - Valuation</a>
                         <a href="#" class="list-group-item list-group-item-action" data-target="#field_visits">Field
                             Visits</a>
                         <a href="#" class="list-group-item list-group-item-action"
@@ -290,6 +291,16 @@ if ($land && !empty($land['land_id'])) {
                         <h5 class="font-weight-bold">Payments</h5>
                         <hr>
                         <div id="ltl-payment-container" data-loaded="0">
+                            <div style="text-align:center;padding:16px">
+                                <img src="../img/Loading_icon.gif" alt="Loading..." style="width:96px;height:auto" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="payment_valuation" class="submenu-section d-none">
+                        <h5 class="font-weight-bold">Payment - Valuation</h5>
+                        <hr>
+                        <div id="rl-valuation-payment-container" data-loaded="0">
                             <div style="text-align:center;padding:16px">
                                 <img src="../img/Loading_icon.gif" alt="Loading..." style="width:96px;height:auto" />
                             </div>
@@ -435,6 +446,17 @@ if ($land && !empty($land['land_id'])) {
         }).catch(() => pc.innerHTML = '<div class="text-danger">Failed to load payments.</div>');
     }
 
+    function loadValuationPaymentTab() {
+        var vpc = document.getElementById('rl-valuation-payment-container');
+        if (!vpc) return;
+        vpc.innerHTML = LOADER_HTML;
+        var url = 'ajax_residential_lease/valuation_payment_tab_render.php?id=<?php echo htmlspecialchars($md5_ben_id ?? "", ENT_QUOTES); ?>&_ts=' + Date.now();
+        fetch(url).then(r => r.text()).then(html => {
+            vpc.innerHTML = html;
+            try { executeScripts(vpc); } catch(e) {}
+        }).catch(() => vpc.innerHTML = '<div class="text-danger">Failed to load valuation payments.</div>');
+    }
+
     function loadFieldVisitsTab() {
         var fv = document.getElementById('ltl-field-visit-container');
         if (!fv) return;
@@ -486,6 +508,7 @@ if ($land && !empty($land['land_id'])) {
             if (target === '#ltl_schedule') loadScheduleTab();
             if (target === '#ltl_schedule_payment') loadSchedulePaymentTab();
             if (target === '#payment') loadPaymentTab();
+            if (target === '#payment_valuation') loadValuationPaymentTab();
             if (target === '#field_visits') loadFieldVisitsTab();
             if (target === '#write-off') loadWriteOffTab();
             if (target === '#tab3') loadRemindersTab();
@@ -526,6 +549,7 @@ if ($land && !empty($land['land_id'])) {
     });
     window.addEventListener('rl:fieldvisits-updated', loadFieldVisitsTab);
     window.addEventListener('rl:reminders-updated', loadRemindersTab);
+    window.addEventListener('rl:valuation-payments-updated', loadValuationPaymentTab);
 })();
 </script>
 

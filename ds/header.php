@@ -28,6 +28,9 @@ error_reporting(E_ALL);
          $client_language = isset($_COOKIE['language_cook']) ? $_COOKIE['language_cook'] : 'English';
    }
 
+   // Table font size cookie
+   $table_font_size = isset($_COOKIE['table_font_size']) ? (int)$_COOKIE['table_font_size'] : 13;
+
 
       $sel_query="SELECT * from client_registration where md5_client='$selected_client'";
       $result = mysqli_query($con,$sel_query);
@@ -174,6 +177,25 @@ $company_id = $_SESSION['customer'];
                             <ul class="dropdown-menu settings-menu">
                                 <li><a href="long_term_lease.php">Long Term Lease</a></li>
                                 <li><a href="reports.php">Reports</a></li>
+                            </ul>
+                        </li>
+
+                        <!-- Table Font Size Selector -->
+                        <li class="dropdown" id='font-size-select'>
+                            <a href="#!" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false"
+                                class="dropdown-toggle drop icon-circle drop-image" style="padding: 0 10px;">
+                                <i class="fa fa-text-height" aria-hidden="true"></i>
+                                <span id="current-font-size"><?php echo $table_font_size; ?>px</span>
+                                <i class="fa fa-angle-down" aria-hidden="true"></i>
+                            </a>
+                            <ul class="dropdown-menu settings-menu" style="min-width: 120px;">
+                                <li style="padding: 5px 15px; font-weight: bold; color: #666; font-size: 11px;">Table Font Size</li>
+                                <li class="font-size-option" data-size="11"><a href="#!">11px <small>Small</small></a></li>
+                                <li class="font-size-option" data-size="12"><a href="#!">12px</a></li>
+                                <li class="font-size-option" data-size="13"><a href="#!">13px <small>Default</small></a></li>
+                                <li class="font-size-option" data-size="14"><a href="#!">14px</a></li>
+                                <li class="font-size-option" data-size="15"><a href="#!">15px</a></li>
+                                <li class="font-size-option" data-size="16"><a href="#!">16px <small>Large</small></a></li>
                             </ul>
                         </li>
 
@@ -642,13 +664,77 @@ if (!function_exists('checkPermission')) {
             z-index: 9999 !important;
         }
 
-        table th,
-        table td {
-            font-size: 13px;
+        :root {
+            --table-font-size: <?php echo $table_font_size; ?>px;
         }
 
-        /* .global-table-font th,
-        .global-table-font td {
-            font-size: 12px !important;
-        } */
+        table th,
+        table td {
+            font-size: var(--table-font-size, 13px);
+        }
+
+        /* Font size dropdown styling */
+        #font-size-select .dropdown-menu li.font-size-option a {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 15px;
+        }
+        #font-size-select .dropdown-menu li.font-size-option a small {
+            color: #999;
+            font-size: 10px;
+            margin-left: 10px;
+        }
+        #font-size-select .dropdown-menu li.font-size-option.active a {
+            background-color: #4CAF50;
+            color: white;
+        }
+        #font-size-select .dropdown-menu li.font-size-option.active a small {
+            color: rgba(255,255,255,0.8);
+        }
+        #font-size-select .dropdown-menu li.font-size-option:hover a {
+            background-color: #e9ecef;
+        }
+        #font-size-select .dropdown-menu li.font-size-option.active:hover a {
+            background-color: #45a049;
+        }
         </style>
+
+        <script>
+        // Table Font Size Handler
+        (function() {
+            var currentSize = <?php echo $table_font_size; ?>;
+            
+            function setCookie(name, value, days) {
+                var expires = "";
+                if (days) {
+                    var date = new Date();
+                    date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+                    expires = "; expires=" + date.toUTCString();
+                }
+                document.cookie = name + "=" + (value || "") + expires + "; path=/";
+            }
+            
+            function applyFontSize(size) {
+                document.documentElement.style.setProperty('--table-font-size', size + 'px');
+                $('#current-font-size').text(size + 'px');
+                // Update active state
+                $('.font-size-option').removeClass('active');
+                $('.font-size-option[data-size="' + size + '"]').addClass('active');
+            }
+            
+            $(document).ready(function() {
+                // Set initial active state
+                applyFontSize(currentSize);
+                
+                // Handle font size selection
+                $('.font-size-option').on('click', function(e) {
+                    e.preventDefault();
+                    var newSize = $(this).data('size');
+                    setCookie('table_font_size', newSize, 180); // 180 days
+                    currentSize = newSize;
+                    applyFontSize(newSize);
+                });
+            });
+        })();
+        </script>

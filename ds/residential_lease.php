@@ -2,22 +2,83 @@
 include 'header.php';
 checkPermission(12);
 
-// Fetch residential lease applicants (no joins; pending placeholders for other data)
-$rows = [];
-if (isset($con)) {
-    $q = "SELECT rl_ben_id, md5_ben_id, name, name_tamil, name_sinhala, address, address_tamil, address_sinhala, district,
-                 ds_division_text, gn_division_text, nic_reg_no, dob, nationality, telephone, email, language, created_on
-          FROM rl_beneficiaries
-          WHERE status = 1
-          ORDER BY rl_ben_id DESC";
-    $res = mysqli_query($con, $q);
-    if ($res) {
-        while ($r = mysqli_fetch_assoc($res)) {
-            $rows[] = $r;
-        }
-    }
+$orderOptions = [
+  'month' => 'Month',
+  'file_number' => 'File Number',
+  'next_month' => 'Only Next Month',
+  'outstanding' => 'Outstanding'
+];
+
+$selectedOrder = '';
+if (isset($_GET['order_filter']) && array_key_exists($_GET['order_filter'], $orderOptions)) {
+  $selectedOrder = $_GET['order_filter'];
+} elseif (isset($_COOKIE['rl_order_filter']) && array_key_exists($_COOKIE['rl_order_filter'], $orderOptions)) {
+  $selectedOrder = $_COOKIE['rl_order_filter'];
 }
+
+// Remind date expression: same logic as LTL - 1 month before anniversary
+$remindExpr = "DATE(
+    DATE_ADD(
+        MAKEDATE(YEAR(CURDATE()), 1)
+        + INTERVAL (MONTH(l.start_date) - 1) MONTH
+        + INTERVAL (DAY(l.start_date) - 1) DAY
+        - INTERVAL 1 MONTH,
+        INTERVAL (YEAR(CURDATE()) - YEAR(
+            MAKEDATE(YEAR(CURDATE()), 1)
+            + INTERVAL (MONTH(l.start_date) - 1) MONTH
+            + INTERVAL (DAY(l.start_date) - 1) DAY
+            - INTERVAL 1 MONTH
+        )) YEAR
+    )
+)";
 ?>
+
+<style>
+/* Wrapper */
+.checkbox-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+}
+
+/* Hide real checkbox */
+.checkbox-wrap input[type="checkbox"] {
+    display: none;
+}
+
+/* Fake box */
+.checkbox-custom {
+    width: 20px;
+    height: 20px;
+    border: 2px solid #28a745;
+    border-radius: 4px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.2s ease;
+}
+
+/* Tick when checked */
+.checkbox-wrap input[type="checkbox"]:checked+.checkbox-custom {
+    background-color: #28a745;
+    color: #fff;
+}
+
+/* Tick icon */
+.checkbox-custom::after {
+    content: "✔";
+    font-size: 14px;
+    display: none;
+}
+
+.checkbox-wrap input[type="checkbox"]:checked+.checkbox-custom::after {
+    display: block;
+}
+</style>
 
 <div class="content-wrapper">
     <div class="container-fluid">
@@ -31,55 +92,207 @@ if (isset($con)) {
         </div>
 
         <div class="card">
-            <div class="card-header" align="right">
-                <?php if (hasPermission(13)): ?>
-                <button type='button' class="btn btn-primary float-right" data-toggle="modal" data-target="#rlBenModal">
-                    Add Lease Application
-                </button>
-                <?php endif; ?>
+            <div class="card-header" align="right" padding="6px;">
+
+                <div class="card-header" align="right">
+
+                    <form id="orderFilterForm" method="get" class="form-inline justify-content-end">
+
+                        <label for="month_filter" class="mr-2 mb-0">Filter by remind Month</label>
+                        <select id="month_filter" class="form-control form-control-sm" style="min-width:150px;">
+                            <option value="">All</option>
+                            <option value="2025-01">January</option>
+                            <option value="2025-02">February</option>
+                            <option value="2025-03">March</option>
+                            <option value="2025-04">April</option>
+                            <option value="2025-05">May</option>
+                            <option value="2025-06">June</option>
+                            <option value="2025-07">July</option>
+                            <option value="2025-08">August</option>
+                            <option value="2025-09">September</option>
+                            <option value="2025-10">October</option>
+                            <option value="2025-11">November</option>
+                            <option value="2025-12">December</option>
+                        </select>
+
+                        <?php if (hasPermission(13)): ?>
+                        <button type='button' class="btn btn-primary float-right ml-2" data-toggle="modal"
+                            data-target="#rlBenModal">
+                            Add Lease Application
+                        </button>
+                        <?php endif; ?>
+                    </form>
+                </div>
+
+                <hr style="margin-top:1px; margin-bottom:1px;">
+
             </div>
+
             <div class="card-body">
-                <table id="rlBenTable" class="table table-bordered table-striped">
+                <table id="rlBenTable" class="table table-bordered table-striped"
+                    style='padding-right: 15px; padding-left: 15px;'>
                     <thead>
                         <tr>
                             <th>#</th>
                             <th>Name</th>
                             <th>Telephone</th>
-                            <th>Address</th>
-                            <th>DS Division</th>
+                            <th>Land Address</th>
                             <th>GN Division</th>
+                            <th>First Lease</th>
                             <th>Lease Number</th>
                             <th>File Number</th>
                             <th>Remind Date</th>
                             <th class="text-right">Outstanding</th>
-                            <th width="150">Action</th>
+                            <th width='120'>Action</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <?php $count = 1; foreach ($rows as $row): ?>
-                        <tr>
+                        <?php
+            // Load beneficiaries with related land + latest lease
+            $rows = [];
+            if (isset($con)) {
+              $sql = "SELECT 
+                        b.rl_ben_id,
+                        b.md5_ben_id,
+                        b.name,
+                        b.address,
+                        b.telephone,
+                        b.language,
+                        lr.land_address,
+                        lr.extent,
+                        COALESCE(gn.gn_name, b.gn_division_text) AS gn_name,
+                        l.file_number,
+                        l.start_date,
+                        l.rl_lease_id,
+                        l.is_it_first_ease,
+                        l.lease_number,
+                        l.status AS lease_status,
+                        CASE WHEN l.start_date IS NOT NULL THEN {$remindExpr} ELSE NULL END AS remind_date,
+                        CASE WHEN l.rl_lease_id IS NOT NULL THEN (
+                          SELECT COUNT(*)
+                          FROM rl_reminders rr
+                          WHERE rr.lease_id = l.rl_lease_id
+                            AND rr.reminders_type = 'Annexure 09'
+                            AND rr.status = 1
+                            AND rr.sent_date BETWEEN DATE_SUB({$remindExpr}, INTERVAL 45 DAY)
+                                AND STR_TO_DATE(CONCAT(YEAR({$remindExpr}), '-12-31'), '%Y-%m-%d')
+                        ) ELSE 0 END AS annexure09_sent
+                        
+                      FROM rl_beneficiaries b
+                      LEFT JOIN rl_land_registration lr ON lr.ben_id = b.rl_ben_id
+                      LEFT JOIN gn_division gn ON lr.gn_id = gn.gn_id
+                      LEFT JOIN (
+                        SELECT l2.beneficiary_id, l2.file_number, l2.start_date, l2.rl_lease_id, l2.is_it_first_ease, l2.lease_number, l2.status
+                        FROM rl_lease l2
+                        INNER JOIN (
+                          SELECT beneficiary_id, MAX(rl_lease_id) AS max_id
+                          FROM rl_lease
+                          GROUP BY beneficiary_id
+                        ) lm ON lm.beneficiary_id = l2.beneficiary_id AND lm.max_id = l2.rl_lease_id
+                      ) l ON l.beneficiary_id = b.rl_ben_id
+                      WHERE b.status = 1
+                      ORDER BY b.rl_ben_id ASC";
+              $result = mysqli_query($con, $sql);
+              if ($result) {
+                while ($r = mysqli_fetch_assoc($result)) { $rows[] = $r; }
+                mysqli_free_result($result);
+              } else {
+                // Debug: uncomment to see SQL errors
+                // echo "SQL Error: " . mysqli_error($con);
+              }
+            }
+
+$count = 1;
+
+            // Helper to compute outstanding for a residential lease (rent+penalty+premium up to today)
+            function compute_rl_outstanding($con, $lease_id){
+              $out = ['total'=>0.0];
+              if (!$lease_id) return $out;
+              $lid = (int)$lease_id;
+              $rent_due = $rent_paid = 0; $pen_due = $pen_paid = 0; $prem_due = $prem_paid = 0;
+              // Rent
+              if ($st = mysqli_prepare($con, "SELECT COALESCE(SUM(annual_amount - COALESCE(discount_apply,0)),0) FROM rl_lease_schedules WHERE lease_id=? AND start_date <= CURDATE()")){
+                mysqli_stmt_bind_param($st,'i',$lid); mysqli_stmt_execute($st); mysqli_stmt_bind_result($st,$rent_due); mysqli_stmt_fetch($st); mysqli_stmt_close($st);
+              }
+              if ($st = mysqli_prepare($con, "SELECT COALESCE(SUM(paid_rent),0) FROM rl_lease_schedules WHERE lease_id=?")){
+                mysqli_stmt_bind_param($st,'i',$lid); mysqli_stmt_execute($st); mysqli_stmt_bind_result($st,$rent_paid); mysqli_stmt_fetch($st); mysqli_stmt_close($st);
+              }
+              // Penalty
+              if ($st = mysqli_prepare($con, "SELECT COALESCE(SUM(panalty),0) FROM rl_lease_schedules WHERE lease_id=? AND start_date <= CURDATE()")){
+                mysqli_stmt_bind_param($st,'i',$lid); mysqli_stmt_execute($st); mysqli_stmt_bind_result($st,$pen_due); mysqli_stmt_fetch($st); mysqli_stmt_close($st);
+              }
+              if ($st = mysqli_prepare($con, "SELECT COALESCE(SUM(panalty_paid),0) FROM rl_lease_schedules WHERE lease_id=?")){
+                mysqli_stmt_bind_param($st,'i',$lid); mysqli_stmt_execute($st); mysqli_stmt_bind_result($st,$pen_paid); mysqli_stmt_fetch($st); mysqli_stmt_close($st);
+              }
+              // Premium
+              if ($st = mysqli_prepare($con, "SELECT COALESCE(SUM(premium),0) FROM rl_lease_schedules WHERE lease_id=? AND start_date <= CURDATE()")){
+                mysqli_stmt_bind_param($st,'i',$lid); mysqli_stmt_execute($st); mysqli_stmt_bind_result($st,$prem_due); mysqli_stmt_fetch($st); mysqli_stmt_close($st);
+              }
+              if ($st = mysqli_prepare($con, "SELECT COALESCE(SUM(premium_paid),0) FROM rl_lease_schedules WHERE lease_id=?")){
+                mysqli_stmt_bind_param($st,'i',$lid); mysqli_stmt_execute($st); mysqli_stmt_bind_result($st,$prem_paid); mysqli_stmt_fetch($st); mysqli_stmt_close($st);
+              }
+              $rent_outstanding = max(0,$rent_due - $rent_paid);
+              $pen_outstanding  = max(0,$pen_due - $pen_paid);
+              $prem_outstanding = max(0,$prem_due - $prem_paid);
+              $out['total'] = $rent_outstanding + $pen_outstanding + $prem_outstanding;
+              return $out;
+            }
+
+            foreach ($rows as $r):
+              $out = compute_rl_outstanding($con, $r['rl_lease_id'] ?? null);
+              $reminderSent = !empty($r['annexure09_sent']);
+              $reminderClass = $reminderSent ? ' class="bg-success text-white"' : '';
+            ?>
+                        <tr
+                            style='<?php if (isset($r['lease_status']) && $r['lease_status'] == 'inactive') { echo "background-color: #ecb5baff;"; } ?>'>
                             <td><?= $count ?></td>
-                            <td><?= htmlspecialchars($row['name'] ?? '') ?></td>
-                            <td><?= htmlspecialchars($row['telephone'] ?? '') ?></td>
-                            <td><?= htmlspecialchars($row['address'] ?? '') ?></td>
-                            <td><?= htmlspecialchars($row['ds_division_text'] ?? 'Pending') ?></td>
-                            <td><?= htmlspecialchars($row['gn_division_text'] ?? 'Pending') ?></td>
-                            <td><span class="text-muted">Pending</span></td>
-                            <td><span class="text-muted">Pending</span></td>
-                            <td><span class="text-muted">Pending</span></td>
-                            <td class="text-right"><span class="text-muted">Pending</span></td>
+                            <td><?= htmlspecialchars($r['name']) ?></td>
+                            <td><?= htmlspecialchars($r['telephone'] ?? '') ?></td>
+                            <td>
+                                <?php if (!empty($r['land_address'])): ?>
+                                <?= htmlspecialchars($r['land_address']) ?>
+                                <?php else: ?>
+                                <span class="badge badge-pill badge-danger">Pending</span>
+                                <?php endif; ?>
+                            </td>
+                            <td><?= htmlspecialchars($r['gn_name'] ?? '') ?></td>
+                            <td>
+                                <?php if (isset($r['is_it_first_ease']) && $r['is_it_first_ease'] !== null): ?>
+                                    <?= $r['is_it_first_ease'] == 1 ? '<span class="badge badge-success">Yes</span>' : '<span class="badge badge-secondary">No</span>' ?>
+                                <?php else: ?>
+                                    <span class="text-muted">-</span>
+                                <?php endif; ?>
+                            </td>
+                            <td><?= htmlspecialchars($r['lease_number'] ?? '') ?></td>
+                            <td align='center'>
+                                <?php if (!empty($r['file_number'])): ?>
+                                <span class="badge badge-info"><?= htmlspecialchars($r['file_number']) ?></span>
+                                <?php else: ?>
+                                <span class="badge badge-pill badge-danger">Pending</span>
+                                <?php endif; ?>
+                            </td>
+                            <td align='center' <?= $reminderClass ?>>
+                                <?php if (!empty($r['remind_date']) && (!isset($r['lease_status']) || $r['lease_status'] == 'active')): ?>
+                                <?= htmlspecialchars($r['remind_date']) ?>
+                                <?php else: ?>
+                                <!-- No remind date for inactive or non-existent leases -->
+                                <?php endif; ?>
+                            </td>
+                            <td class="text-right"><?= number_format($out['total'],2) ?></td>
+
                             <td>
                                 <a class="btn btn-sm btn-info"
-                                    href="residential_lease_open.php?id=<?= urlencode($row['md5_ben_id'] ?? '') ?>">
+                                    href="residential_lease_open.php?id=<?= urlencode($r['md5_ben_id'] ?? '') ?>">
                                     <i class="fa fa-folder-open"></i> Open
                                 </a>
-                                <button type="button" class="btn btn-sm btn-outline-secondary rl-edit"
-                                    data-id="<?= (int)$row['rl_ben_id'] ?>">
-                                    <i class="fa fa-edit"></i> Edit
-                                </button>
+                                <?php if (hasPermission(13)): ?>
+                                <button type="button" class="btn btn-sm btn-primary rl-edit"
+                                    data-id="<?= (int)$r['rl_ben_id'] ?>">
+                                    <i class="fa fa-edit"></i></button>
+                                <?php endif; ?>
                             </td>
                         </tr>
-                        <?php $count++; endforeach; ?>
+                        <?php $count++;  endforeach; ?>
                     </tbody>
                 </table>
             </div>
@@ -210,98 +423,281 @@ if (isset($con)) {
 
                     <div class="form-row">
                         <div class="form-group col-md-4">
-                            <label>Telephone</label>
-                            <input type="text" name="telephone" id="telephone" class="form-control">
-                        </div>
-                        <div class="form-group col-md-4">
-                            <label>Email</label>
-                            <input type="email" name="email" id="email" class="form-control">
-                        </div>
-                        <div class="form-group col-md-4">
-                            <label>Preferred Language</label>
+                            <label>Language</label>
                             <select name="language" id="language" class="form-control">
-                                <option value="English" selected>English</option>
+                                <option value="English">English</option>
                                 <option value="Tamil">Tamil</option>
                                 <option value="Sinhala">Sinhala</option>
                             </select>
                         </div>
+                        <div class="form-group col-md-4">
+                            <label>Telephone Number</label>
+                            <input type="text" name="telephone" id="telephone" class="form-control" required>
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label>Email Address</label>
+                            <input type="email" name="email" id="email" class="form-control">
+                        </div>
+                    </div>
+
+                    <div align="right">
+                        <button type="submit" class="btn btn-success processing" style="margin-top:20px;"> <i
+                                class="bi bi-save"></i> Save</button>
+
+                        <button type="button" class="btn btn-danger" data-dismiss="modal" style="margin-top:20px;">
+                            <i class="fa fa-times"></i> Close
+                        </button>
                     </div>
 
                 </div>
                 <div class="modal-footer">
-                    <button type="submit" class="btn btn-success processing_btn"><i class="bi bi-save"></i>
-                        Save</button>
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
+<?php include 'footer.php'; ?>
+
 <script>
 $(document).ready(function() {
-    var table = $('#rlBenTable').DataTable({
-        processing: false,
-        serverSide: false,
-        pageLength: 25,
-        order: [
-            [0, 'asc']
-        ]
+
+    // Initialize Select2 for District, DS Division, GN Division
+    $('#district').select2({
+        width: '100%',
+        dropdownParent: $('#rlBenModal')
+    });
+    $('#ds_division_id').select2({
+        width: '100%',
+        dropdownParent: $('#rlBenModal')
+    });
+    $('#gn_division_id').select2({
+        width: '100%',
+        dropdownParent: $('#rlBenModal')
     });
 
-    // Submit form (create/update)
+    // District change logic
+    var currentDistrict = "<?php echo isset($current_district) ? $current_district : ''; ?>";
+    var currentDSDivision = "<?php echo isset($current_DS_division) ? $current_DS_division : (isset($client_name) ? $client_name : ''); ?>";
+    var isEditing = false;
+
+    function setDefaultDSDivision() {
+        if (currentDSDivision && !isEditing) {
+            $('#ds_division_id option').each(function() {
+                if ($(this).text().trim() === currentDSDivision.trim()) {
+                    $('#ds_division_id').val($(this).val()).trigger('change');
+                }
+            });
+        }
+    }
+
+    if (currentDistrict && !isEditing) {
+        $('#district').val(currentDistrict).trigger('change');
+        setTimeout(setDefaultDSDivision, 400);
+    }
+
+    $('#rlBenModal').on('shown.bs.modal', function() {
+        if (currentDistrict && !isEditing) {
+            $('#district').val(currentDistrict).trigger('change');
+            setTimeout(setDefaultDSDivision, 400);
+        }
+    });
+
+    $('#district').change(function() {
+        var district = $(this).val();
+        if (district == 'Trincomalee' || district == 'Batticaloa' || district == 'Ampara') {
+            // Load DS Division options via AJAX
+            $.get('ajax/get_ds_divisions.php', {
+                district: district
+            }, function(data) {
+                $('#ds_division_id').html(data);
+                $('#ds_division_id').select2({
+                    width: '100%',
+                    dropdownParent: $('#rlBenModal')
+                });
+            });
+            $('#ds_division_id').prop('disabled', false).prop('required', true);
+            $('#ds_division_text').hide();
+            $('#gn_division_id').prop('disabled', false).prop('required', true);
+            $('#gn_division_text').hide();
+        } else {
+            // For other districts allow typing a new DS / GN value via taggable select2
+            $('#ds_division_text').hide();
+            $('#gn_division_text').hide();
+
+            // Initialize ds select as taggable to allow free text input
+            $('#ds_division_id').prop('disabled', false).prop('required', false);
+            try {
+                $('#ds_division_id').select2('destroy');
+            } catch (e) {}
+            $('#ds_division_id').select2({
+                width: '100%',
+                dropdownParent: $('#rlBenModal'),
+                tags: true,
+                tokenSeparators: [',']
+            });
+
+            // Initialize gn select as taggable
+            $('#gn_division_id').prop('disabled', false).prop('required', false);
+            try {
+                $('#gn_division_id').select2('destroy');
+            } catch (e) {}
+            $('#gn_division_id').select2({
+                width: '100%',
+                dropdownParent: $('#rlBenModal'),
+                tags: true,
+                tokenSeparators: [',']
+            });
+        }
+    });
+
+    // Load GN divisions when DS selected
+    $('#ds_division_id').change(function() {
+        var c_id = $(this).val();
+        if (c_id) {
+            // If c_id is numeric (existing DS id) then load GN divisions from server
+            if (!isNaN(c_id)) {
+                $.get("ajax/get_gn_divisions.php", {
+                    c_id: c_id
+                }, function(data) {
+                    $("#gn_division_id").html(data);
+                    // Re-init select2 for the replaced HTML
+                    $('#gn_division_id').select2({
+                        width: '100%',
+                        dropdownParent: $('#rlBenModal')
+                    });
+                });
+                $('#gn_division_id').show();
+                $('#gn_division_text').hide();
+            } else {
+                // Non-numeric DS (tag/text) was selected — don't fetch GN list (would overwrite any tag)
+                // Initialize GN as taggable so user can enter free-text GN values
+                try {
+                    $('#gn_division_id').select2('destroy');
+                } catch (e) {}
+                $('#gn_division_id').select2({
+                    width: '100%',
+                    dropdownParent: $('#rlBenModal'),
+                    tags: true,
+                    tokenSeparators: [',']
+                });
+                $('#gn_division_id').show();
+                $('#gn_division_text').hide();
+            }
+        } else {
+            $('#gn_division_id').hide();
+            $('#gn_division_text').show();
+        }
+    });
+
+    // Save Beneficiary
     $("#rlBenForm").on("submit", function(e) {
         e.preventDefault();
-        var form = this;
-        // If DS/GN are free-text (select2 tag), copy to text fields for backend
+        // Build payload explicitly to ensure ds_division_text / gn_division_text are set correctly
+        var payload = {};
+        // Basic fields from form
+        payload.rl_ben_id = $('#rl_ben_id').val();
+        payload.name = $('#name').val();
+        payload.name_sinhala = $('#name_sinhala').val();
+        payload.name_tamil = $('#name_tamil').val();
+        payload.address = $('#address').val();
+        payload.address_sinhala = $('#address_sinhala').val();
+        payload.address_tamil = $('#address_tamil').val();
+        payload.district = $('#district').val();
+        payload.nic_reg_no = $('#nic_reg_no').val();
+        payload.dob = $('#dob').val();
+        payload.nationality = $('#nationality').val();
+        payload.telephone = $('#telephone').val();
+        payload.email = $('#email').val();
+        payload.language = $('#language').val() || 'English';
+
+        // DS handling
         var dsVal = $('#ds_division_id').val();
-        if (dsVal && !/^\d+$/.test(dsVal)) {
-            $('#ds_division_text').val(dsVal);
-        } else if (!dsVal) {
-            $('#ds_division_text').val('');
+        if (Array.isArray(dsVal)) dsVal = dsVal.join(', ');
+        // If text input is visible and has content, prefer it
+        if ($('#ds_division_text').is(':visible') && $('#ds_division_text').val().trim()) {
+            payload.ds_division_text = $('#ds_division_text').val().trim();
+            payload.ds_division_id = '';
+        } else if (dsVal && dsVal.length && isNaN(dsVal)) {
+            // taggable select returned non-numeric text
+            payload.ds_division_text = dsVal;
+            payload.ds_division_id = '';
+        } else {
+            payload.ds_division_text = $('#ds_division_text').val().trim();
+            payload.ds_division_id = dsVal || '';
         }
+
+        // GN handling
         var gnVal = $('#gn_division_id').val();
-        if (gnVal && !/^\d+$/.test(gnVal)) {
-            $('#gn_division_text').val(gnVal);
-        } else if (!gnVal) {
-            $('#gn_division_text').val('');
+        if (Array.isArray(gnVal)) gnVal = gnVal.join(', ');
+        if ($('#gn_division_text').is(':visible') && $('#gn_division_text').val().trim()) {
+            payload.gn_division_text = $('#gn_division_text').val().trim();
+            payload.gn_division_id = '';
+        } else if (gnVal && gnVal.length && isNaN(gnVal)) {
+            payload.gn_division_text = gnVal;
+            payload.gn_division_id = '';
+        } else {
+            payload.gn_division_text = $('#gn_division_text').val().trim();
+            payload.gn_division_id = gnVal || '';
         }
-        var btn = form.querySelector(".processing_btn");
-        if (btn) {
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Saving...';
+
+        // Debug: show payload in console so dev can verify gn_division_text / ds_division_text
+        if (window.console && window.console.debug) {
+            console.debug('Beneficiary payload:', payload);
         }
+
+        // Post to server expecting JSON
         $.ajax({
             url: "ajax_residential_lease/save_rl_beneficiary.php",
             method: "POST",
-            data: $(form).serialize(),
-            dataType: "json",
+            data: payload,
+            dataType: 'json',
             success: function(resp) {
                 if (resp && resp.success) {
-                    Swal.fire("Success", resp.message || "Saved", "success").then(
-                        function() {
-                            window.location.reload();
+                    if (window.Swal) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Saved',
+                            text: resp.message || 'Beneficiary saved'
                         });
+                    } else {
+                        alert(resp.message || 'Beneficiary saved');
+                    }
+                    $("#rlBenModal").modal("hide");
+                    $("#rlBenForm")[0].reset();
+                    $("#rl_ben_id").val("");
+                    // Reload the page to reflect latest table data (client-side rendering)
+                    location.reload();
                 } else {
-                    Swal.fire("Error", (resp && resp.message) || "Failed to save", "error");
+                    var msg = (resp && resp.message) ? resp.message : (resp ? JSON
+                        .stringify(resp) : 'Unknown error');
+                    if (window.Swal) {
+                        Swal.fire('Error', msg, 'error');
+                    } else {
+                        alert('Error: ' + msg);
+                    }
                 }
             },
-            error: function() {
-                Swal.fire("Error", "Server error", "error");
-            },
-            complete: function() {
-                if (btn) {
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="bi bi-save"></i> Save';
+            error: function(xhr) {
+                console.error('Save Beneficiary error:', xhr.responseText);
+                var err = 'Server error';
+                try {
+                    err = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON
+                        .message : xhr.statusText;
+                } catch (e) {}
+                if (window.Swal) {
+                    Swal.fire('Error', err, 'error');
+                } else {
+                    alert('Error: ' + err);
                 }
             }
         });
     });
 
-    // Edit existing
+    // Edit Beneficiary
     $(document).on("click", ".rl-edit", function() {
+        isEditing = true;
         var id = $(this).data("id");
-        if (!id) return;
         $.ajax({
             url: "ajax_residential_lease/get_rl_beneficiary.php",
             method: "POST",
@@ -317,76 +713,84 @@ $(document).ready(function() {
                 $("#address").val(data.address);
                 $("#address_tamil").val(data.address_tamil);
                 $("#address_sinhala").val(data.address_sinhala);
-                $("#district").val(data.district || 'Trincomalee');
-                // DS/GN population with select2 behavior similar to LTL
-                if (data.ds_division_text && !data.ds_division_id) {
-                    try {
-                        $('#ds_division_id').select2('destroy');
-                    } catch (e) {}
-                    $('#ds_division_id').select2({
-                        width: '100%',
-                        dropdownParent: $('#rlBenModal'),
-                        tags: true,
-                        tokenSeparators: [',']
-                    });
-                    var val = data.ds_division_text;
-                    var newOption = new Option(val, val, true, true);
-                    $('#ds_division_id').append(newOption).trigger('change');
-                    $('#ds_division_text').hide();
-                    if (data.gn_division_text) {
+                $("#district").val(data.district).trigger("change");
+                setTimeout(function() {
+                    if (data.ds_division_text) {
+                        // Prefill taggable select with text value so user can edit it as a tag
                         try {
-                            $('#gn_division_id').select2('destroy');
+                            $('#ds_division_id').select2('destroy');
                         } catch (e) {}
-                        $('#gn_division_id').select2({
+                        $('#ds_division_id').select2({
                             width: '100%',
                             dropdownParent: $('#rlBenModal'),
                             tags: true,
                             tokenSeparators: [',']
                         });
-                        var gval = data.gn_division_text;
-                        var gOption = new Option(gval, gval, true, true);
-                        $('#gn_division_id').append(gOption).trigger('change');
-                        $('#gn_division_text').hide();
-                    } else if (data.gn_division_id) {
-                        $('#gn_division_id').val(data.gn_division_id).trigger('change');
-                        $('#gn_division_id').show();
-                        $('#gn_division_text').hide();
-                    } else {
-                        $('#gn_division_id').hide();
-                        $('#gn_division_text').show();
-                        $('#gn_division_text').val('');
-                    }
-                } else if (data.ds_division_id) {
-                    $('#ds_division_id').val(data.ds_division_id).trigger('change');
-                    $('#ds_division_id').show();
-                    $('#ds_division_text').hide();
-                    $.get("ajax/get_gn_divisions.php", {
-                        c_id: data.ds_division_id
-                    }, function(gnData) {
-                        $('#gn_division_id').html(gnData);
-                        $('#gn_division_id').select2({
-                            width: '100%',
-                            dropdownParent: $('#rlBenModal')
-                        });
-                        if (data.gn_division_id) {
+                        var val = data.ds_division_text;
+                        // create an option and select it
+                        var newOption = new Option(val, val, true, true);
+                        $('#ds_division_id').append(newOption).trigger('change');
+                        $('#ds_division_text').hide();
+                        // If GN is also text (no id), hide GN select2 and show text input
+                        if (data.gn_division_text) {
+                            try {
+                                $('#gn_division_id').select2('destroy');
+                            } catch (e) {}
+                            $('#gn_division_id').select2({
+                                width: '100%',
+                                dropdownParent: $('#rlBenModal'),
+                                tags: true,
+                                tokenSeparators: [',']
+                            });
+                            var gval = data.gn_division_text;
+                            var gOption = new Option(gval, gval, true, true);
+                            $('#gn_division_id').append(gOption).trigger('change');
+                            $('#gn_division_text').hide();
+                        } else if (data.gn_division_id) {
                             $('#gn_division_id').val(data.gn_division_id).trigger(
                                 'change');
                             $('#gn_division_id').show();
                             $('#gn_division_text').hide();
                         } else {
-                            $('#gn_division_text').val(data.gn_division_text);
                             $('#gn_division_id').hide();
                             $('#gn_division_text').show();
                         }
-                    });
-                } else {
-                    $('#ds_division_id').prop('disabled', true);
-                    $('#ds_division_text').show();
-                    $('#gn_division_id').prop('disabled', true);
-                    $('#gn_division_text').show();
-                    $('#ds_division_text').val(data.ds_division_text);
-                    $('#gn_division_text').val(data.gn_division_text);
-                }
+                    } else if (data.ds_division_id) {
+                        $('#ds_division_id').val(data.ds_division_id).trigger(
+                            'change');
+                        $('#ds_division_id').show();
+                        $('#ds_division_text').hide();
+                        // GN Division logic
+                        $.get("ajax/get_gn_divisions.php", {
+                            c_id: data.ds_division_id
+                        }, function(gnData) {
+                            $('#gn_division_id').html(gnData);
+                            $('#gn_division_id').select2({
+                                width: '100%',
+                                dropdownParent: $('#rlBenModal')
+                            });
+                            if (data.gn_division_id) {
+                                $('#gn_division_id').val(data
+                                    .gn_division_id).trigger('change');
+                                $('#gn_division_id').show();
+                                $('#gn_division_text').hide();
+                            } else {
+                                $('#gn_division_text').val(data
+                                    .gn_division_text);
+                                $('#gn_division_id').hide();
+                                $('#gn_division_text').show();
+                            }
+                        });
+                    } else {
+                        // Both DS and GN are text only
+                        $('#ds_division_id').prop('disabled', true);
+                        $('#ds_division_text').show();
+                        $('#gn_division_id').prop('disabled', true);
+                        $('#gn_division_text').show();
+                        $('#ds_division_text').val(data.ds_division_text);
+                        $('#gn_division_text').val(data.gn_division_text);
+                    }
+                }, 400);
                 $("#nic_reg_no").val(data.nic_reg_no);
                 $("#dob").val(data.dob);
                 $("#nationality").val(data.nationality);
@@ -394,78 +798,88 @@ $(document).ready(function() {
                 $("#email").val(data.email);
                 $("#language").val(data.language || 'English');
                 $("#rlBenModal").modal("show");
-            },
-            error: function() {
-                Swal.fire("Error", "Failed to load beneficiary", "error");
             }
         });
     });
 
     $('#rlBenModal').on('hidden.bs.modal', function() {
+        isEditing = false;
+        // Clear form fields when modal is closed
         $('#rlBenForm')[0].reset();
         $('#rl_ben_id').val('');
-        $('#district').val('Trincomalee');
         $('#language').val('English');
         $('#ds_division_id').val('').trigger('change');
-        $('#ds_division_text').val('').hide();
-        $('#ds_division_id').prop('disabled', false).show();
+        $('#ds_division_text').val('');
         $('#gn_division_id').val('').trigger('change');
-        $('#gn_division_text').val('').hide();
-        $('#gn_division_id').prop('disabled', false).show().html(
-            '<option value=\"\">Select GN Division</option>');
-    });
-
-    // DS Division change -> load GN list or allow free text (tags)
-    $('#ds_division_id').on('change', function() {
-        var dsId = $(this).val();
-        if (!dsId) {
-            $('#gn_division_id').html('<option value=\"\">Select GN Division</option>');
-            $('#gn_division_text').val('');
-            $('#gn_division_id').hide();
-            $('#gn_division_text').show();
-            return;
-        }
-        if (/^\\d+$/.test(dsId)) {
-            $.get("ajax/get_gn_divisions.php", {
-                c_id: dsId
-            }, function(gnData) {
-                $('#gn_division_id').html(gnData);
-                $('#gn_division_id').show();
-                $('#gn_division_text').hide();
-                if (window.jQuery && $('#gn_division_id').data('select2')) {
-                    $('#gn_division_id').select2({
-                        width: '100%',
-                        dropdownParent: $('#rlBenModal')
-                    });
-                }
-            });
-        } else {
-            // custom DS -> allow GN free text
-            $('#gn_division_id').hide();
-            $('#gn_division_text').val('').show();
+        $('#gn_division_text').val('');
+        $('#address').val('');
+        $('#name').val('');
+        $('#nic_reg_no').val('');
+        $('#dob').val('');
+        $('#nationality').val('');
+        $('#telephone').val('');
+        $('#email').val('');
+        // Hide text inputs and show select2 for new
+        $('#ds_division_text').hide();
+        $('#ds_division_id').show();
+        $('#gn_division_text').hide();
+        $('#gn_division_id').show();
+        // Enable and reset Save button text
+        var button = document.querySelector('button.processing');
+        if (button) {
+            button.disabled = false;
+            button.innerHTML = '<i class="bi bi-save"></i> Save';
         }
     });
 
-    // Enable select2 on District/DS/GN like LTL; DS/GN allow tags for custom entries
-    if (window.jQuery) {
-        $('#district').select2({
-            width: '100%',
-            dropdownParent: $('#rlBenModal')
-        });
-        $('#ds_division_id').select2({
-            width: '100%',
-            dropdownParent: $('#rlBenModal'),
-            tags: true,
-            tokenSeparators: [',']
-        });
-        $('#gn_division_id').select2({
-            width: '100%',
-            dropdownParent: $('#rlBenModal'),
-            tags: true,
-            tokenSeparators: [',']
+    var $orderSelect = $('#order_filter');
+    if ($orderSelect.length) {
+        $orderSelect.on('change', function() {
+            var value = this.value || '';
+            var maxAgeSeconds = 30 * 24 * 60 * 60;
+            document.cookie = 'rl_order_filter=' + encodeURIComponent(value) + ';path=/;max-age=' +
+                maxAgeSeconds;
+            this.form.submit();
         });
     }
+
+    // DataTable initialization
+    var table = $('#rlBenTable').DataTable({
+        processing: false,
+        serverSide: false,
+        pageLength: 25,
+        order: [
+            [0, 'asc']
+        ]
+    });
+
+    // ---- MONTH FILTER START ----
+
+    // Extend DataTables search for month filter
+    $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
+        // Only apply to rlBenTable
+        if (settings.nTable.id !== 'rlBenTable') return true;
+
+        var selectedMonth = $('#month_filter').val(); // 2025-01, 2025-02 etc.
+        var remindDate = data[8]; // "Remind Date" column index (0-based: 8)
+
+        if (selectedMonth === '') {
+            return true; // show all
+        }
+
+        // match year-month only: 2025-01
+        if (remindDate.startsWith(selectedMonth)) {
+            return true;
+        }
+
+        return false;
+    });
+
+    $('#month_filter').on('change', function() {
+        table.draw();
+    });
+
+    // ---- MONTH FILTER END ----
+
 });
 </script>
-
-<?php include 'footer.php'; ?>

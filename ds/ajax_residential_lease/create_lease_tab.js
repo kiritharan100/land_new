@@ -273,8 +273,8 @@
     }
     var isUpdate = !!(leaseIdInput && leaseIdInput.value);
     var url = isUpdate
-      ? "payment_ajax/update_res_lease.php"
-      : "payment_ajax/create_res_lease.php";
+      ? "ajax_residential_lease/update_res_lease.php"
+      : "ajax_residential_lease/create_res_lease.php";
     if (saveBtn) {
       saveBtn.disabled = true;
       saveBtn.innerHTML = isUpdate ? "Updating..." : "Saving...";
@@ -328,8 +328,8 @@
         if (saveBtn) {
           saveBtn.disabled = false;
           saveBtn.innerHTML = leaseIdInput && leaseIdInput.value
-            ? "Update Lease"
-            : "Create Lease";
+            ? "Update Lease & Recalculate Schedule"
+            : "Create Lease & Generate Schedule";
         }
       });
   }
@@ -340,7 +340,7 @@
       lockReadOnlyFields();
       if (saveBtn) {
         saveBtn.classList.remove("d-none");
-        saveBtn.innerHTML = "Update Lease";
+        saveBtn.innerHTML = "Update Lease & Recalculate Schedule";
       }
       if (editBtn) editBtn.classList.add("d-none");
       toggleFirstLeaseRequired();

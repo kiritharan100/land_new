@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jan 01, 2026 at 02:15 AM
+-- Generation Time: Jan 01, 2026 at 06:32 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.0.30
 
@@ -578,6 +578,22 @@ CREATE TABLE `rl_beneficiaries` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `rl_field_visits`
+--
+
+CREATE TABLE `rl_field_visits` (
+  `id` int(11) NOT NULL,
+  `lease_id` int(11) NOT NULL,
+  `date` date DEFAULT NULL,
+  `officers_visited` varchar(150) NOT NULL,
+  `visite_status` varchar(50) NOT NULL,
+  `status` int(11) NOT NULL DEFAULT 1,
+  `recodrd_on` datetime NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `rl_land_document_type`
 --
 
@@ -652,6 +668,7 @@ CREATE TABLE `rl_lease` (
   `premium` decimal(10,2) NOT NULL,
   `start_date` date DEFAULT NULL,
   `end_date` date DEFAULT NULL,
+  `years_of_lease` int(11) NOT NULL,
   `status` enum('active','inactive','cancelled','') NOT NULL,
   `lease_calculation_basic` enum('Valuvation basis','Income basis','','') NOT NULL,
   `annual_rent_percentage` decimal(10,2) NOT NULL,
@@ -1050,6 +1067,13 @@ ALTER TABLE `rl_beneficiaries`
   ADD PRIMARY KEY (`rl_ben_id`);
 
 --
+-- Indexes for table `rl_field_visits`
+--
+ALTER TABLE `rl_field_visits`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `lease_id` (`lease_id`);
+
+--
 -- Indexes for table `rl_land_document_type`
 --
 ALTER TABLE `rl_land_document_type`
@@ -1294,6 +1318,12 @@ ALTER TABLE `payment_record`
 --
 ALTER TABLE `rl_beneficiaries`
   MODIFY `rl_ben_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `rl_field_visits`
+--
+ALTER TABLE `rl_field_visits`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `rl_land_document_type`

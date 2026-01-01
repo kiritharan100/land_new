@@ -232,18 +232,35 @@ if ($end_date_raw === '' && $start_date_raw) {
                 </div>
             </div>
 
+            <?php
+            // Check if lease is active (same logic as LTL)
+            $lease_status_raw = $lease['status'] ?? '';
+            $lease_status_val = is_numeric($lease_status_raw) ? (int)$lease_status_raw : strtolower((string)$lease_status_raw);
+            $is_active_lease = $lease && ($lease_status_val === '' || $lease_status_val === 1 || $lease_status_val === 'active');
+            ?>
             <div class="text-right">
-                <button type="submit" class="btn btn-success" id="rl_save_btn"
+                <button type="submit" class="btn btn-success<?php echo $lease ? ' d-none' : ''; ?>" id="rl_save_btn"
                     onclick="return window.RLLeaseForm && typeof window.RLLeaseForm.submitDirect==='function' ? RLLeaseForm.submitDirect(event) : true;">
-                    <i class="fa fa-save"></i> <?php echo $lease ? 'Update Lease' : 'Create Lease'; ?>
+                    <i class="fa fa-save"></i> <?php echo $lease ? 'Update Lease & Recalculate Schedule' : 'Create Lease & Generate Schedule'; ?>
                 </button>
-                <button type="button" class="btn btn-secondary<?php echo $lease ? '' : ' d-none'; ?>" id="rl_edit_btn">
-                    <i class="fa fa-edit"></i> Edit
-                </button>
+                <?php if ($lease): ?>
+                    <?php if (hasPermission(20)): ?>
+                        <?php if ($is_active_lease): ?>
+                        <button type="button" class="btn btn-secondary" id="rl_edit_btn">
+                            <i class="fa fa-edit"></i> Edit
+                        </button>
+                        <?php else: ?>
+                        <button type="button" class="btn btn-secondary disabled" id="rl_edit_btn" disabled title="Lease is inactive">
+                            <i class="fa fa-edit"></i> Edit
+                        </button>
+                        <div class="text-muted small mt-2">Lease is inactive; editing is disabled.</div>
+                        <?php endif; ?>
+                    <?php endif; ?>
+                <?php endif; ?>
             </div>
         </form>
 
-        <?php if ($lease): ?>
+        <?php if ($lease && hasPermission(20)): ?>
         <hr>
         <h5 class="font-weight-bold mb-3">Update Grant Details</h5>
         <form id="rlGrantDetailsForm">

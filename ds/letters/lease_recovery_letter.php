@@ -190,6 +190,27 @@ function amount_to_words($amount){
 
 $amount_words = amount_to_words($total_outstanding);
 
+// Check if beneficiary name exists
+$benName = $ben['name'] ?? '';
+if (empty(trim($benName))) {
+    ?>
+    <!DOCTYPE html>
+    <html><head><meta charset="UTF-8"><title>Error</title>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    </head><body>
+    <script>
+        Swal.fire({
+            icon: 'warning',
+            title: 'Beneficiary Name Missing',
+            text: 'The beneficiary name has not been entered. Please update the beneficiary details before generating this letter.',
+            confirmButtonText: 'Close'
+        }).then(function() { window.close(); });
+    </script>
+    </body></html>
+    <?php
+    exit;
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="en">

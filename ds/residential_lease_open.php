@@ -90,14 +90,50 @@ if (!empty($md5_ben_id) && isset($con)) {
 }
 
 $lease_id = $lease['rl_lease_id'] ?? 0;
+
+// Check if lease is inactive
+$inactive_date = $lease['inactive_date'] ?? '';
+$lease_status_raw = $lease['lease_status'] ?? ($lease['status'] ?? '');
+$status_text = is_string($lease_status_raw) ? strtolower(trim($lease_status_raw)) : $lease_status_raw;
+$is_inactive = false;
+if (!empty($inactive_date)) { $is_inactive = true; }
+if (is_numeric($lease_status_raw) && intval($lease_status_raw) === 0) { $is_inactive = true; }
+if (is_string($status_text) && in_array($status_text, ['inactive','cancelled','closed'], true)) { $is_inactive = true; }
+$overviewBg = $is_inactive ? '#F5C2B8' : '#ffffff';
+
+// Get GN name for land if available
+$land_gn_name = '';
+if ($land && !empty($land['land_id'])) {
+    $gn_sql = "SELECT gn.gn_name FROM rl_land_registration lr 
+               LEFT JOIN gn_division gn ON lr.gn_id = gn.gn_id 
+               WHERE lr.land_id = ? LIMIT 1";
+    if ($gn_stmt = mysqli_prepare($con, $gn_sql)) {
+        mysqli_stmt_bind_param($gn_stmt, 'i', $land['land_id']);
+        mysqli_stmt_execute($gn_stmt);
+        $gn_res = mysqli_stmt_get_result($gn_stmt);
+        if ($gn_row = mysqli_fetch_assoc($gn_res)) {
+            $land_gn_name = $gn_row['gn_name'] ?? '';
+        }
+        mysqli_stmt_close($gn_stmt);
+    }
+}
 ?>
 
 <div class="content-wrapper">
     <div class="container-fluid">
         <br>
-        <div class="col-md-12 bg-white" style="padding-top:5px;">
+        <div class="col-md-12 bg-white" style="padding-top:5px;background:<?= $overviewBg ?>;">
 
             <h5 class="font-weight-bold" style="margin-bottom:5px;">Residential Lease > Overview </h5>
+            
+            <?php if ($is_inactive): ?>
+            <div class="alert alert-warning" style="background:#F5C2B8;border-color:#e2a396;color:#7a2d21;">
+                This lease is inactive from: <?= htmlspecialchars($inactive_date ?: 'N/A') ?>
+                <?php if (!empty($lease['inactive_reason'])): ?>
+                <br>Reason: <?= htmlspecialchars($lease['inactive_reason']) ?>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
 
             <?php if ($ben): ?>
 
@@ -106,26 +142,37 @@ $lease_id = $lease['rl_lease_id'] ?? 0;
                     <thead class="thead-light">
                         <tr>
                             <th>Beneficiary Name</th>
-                            <th>Address</th>
-                            <th>District</th>
-                            <th>DS Division</th>
-                            <th>GN Division</th>
-                            <th>NIC</th>
-                            <th>Telephone</th>
-                            <th>DOB</th>
+                            <th>Land Address</th>
+                            <th>Land GN Division</th>
+                            <th>Lease Number</th>
+                            <th>File Number</th>
+                            
+                            <th>Beneficiary Income</th>
                         </tr>
                     </thead>
 
                     <tbody>
                         <tr>
                             <td><?= valOrPending($ben['name'] ?? '') ?></td>
-                            <td><?= valOrPending($ben['address'] ?? '') ?></td>
-                            <td><?= valOrPending($ben['district'] ?? '') ?></td>
-                            <td><?= valOrPending($ben['ds_division'] ?? '') ?></td>
-                            <td><?= valOrPending($ben['gn_division'] ?? '') ?></td>
-                            <td><?= valOrPending($ben['nic_reg_no'] ?? '') ?></td>
-                            <td><?= valOrPending($ben['telephone'] ?? '') ?></td>
-                            <td><?= valOrPending($ben['dob'] ?? '') ?></td>
+                            <script>
+                            document.addEventListener("DOMContentLoaded", function() {
+                                var lease_id = <?= json_encode($lease_id) ?>;
+                                if (lease_id > 0) {
+                                    fetch("ajax_residential_lease/rl_cal_penalty.php?lease_id=" + lease_id)
+                                        .then(response => response.text())
+                                        .then(data => {
+                                            console.log("RL Penalty Script Executed:", data);
+                                        })
+                                        .catch(error => console.error("Error:", error));
+                                }
+                            });
+                            </script>
+                            <td><?= valOrPending($land['land_address'] ?? '') ?></td>
+                            <td><?= valOrPending($land_gn_name) ?></td>
+                            <td><?= valOrPending($lease['lease_number'] ?? '') ?></td>
+                            <td><?= valOrPending($lease['file_number'] ?? '') ?></td>
+                             
+                            <td><?= isset($lease['ben_income']) && $lease['ben_income'] !== '' ? 'Rs. ' . number_format((float)$lease['ben_income'], 2) : '<span style="color:red;font-weight:bold;">Pending</span>' ?></td>
                         </tr>
                     </tbody>
 
@@ -279,12 +326,10 @@ $lease_id = $lease['rl_lease_id'] ?? 0;
 <script>
 (function() {
     var MD5_BEN_ID = <?php echo json_encode($md5_ben_id ?? ''); ?>;
+    var LOADER_HTML = '<div style="text-align:center;padding:16px"><img src="../img/Loading_icon.gif" alt="Loading..." style="width:96px;height:auto" /></div>';
 
     function ensureLeafletLoaded(cb) {
-        if (window.L && typeof window.L.map === 'function') {
-            cb && cb();
-            return;
-        }
+        if (window.L && typeof window.L.map === 'function') { cb && cb(); return; }
         var haveCss = !!document.querySelector('link[href*="leaflet.css"]');
         if (!haveCss) {
             var link = document.createElement('link');
@@ -294,12 +339,8 @@ $lease_id = $lease['rl_lease_id'] ?? 0;
         }
         var script = document.createElement('script');
         script.src = 'https://unpkg.com/leaflet/dist/leaflet.js';
-        script.onload = function() {
-            cb && cb();
-        };
-        script.onerror = function() {
-            cb && cb();
-        };
+        script.onload = function() { cb && cb(); };
+        script.onerror = function() { cb && cb(); };
         document.head.appendChild(script);
     }
 
@@ -307,21 +348,14 @@ $lease_id = $lease['rl_lease_id'] ?? 0;
         var scripts = Array.prototype.slice.call(container.querySelectorAll('script'));
         scripts.forEach(function(old) {
             var s = document.createElement('script');
-            if (old.src) {
-                s.src = old.src;
-                s.async = false;
-            } else {
-                s.text = old.text || old.textContent || '';
-            }
+            if (old.src) { s.src = old.src; s.async = false; }
+            else { s.text = old.text || old.textContent || ''; }
             document.body.appendChild(s);
         });
     }
 
     function ensureDocsScriptLoaded(cb) {
-        if (window.RLDocs && typeof window.RLDocs.init === 'function') {
-            cb && cb();
-            return;
-        }
+        if (window.RLDocs && typeof window.RLDocs.init === 'function') { cb && cb(); return; }
         var s = document.createElement('script');
         s.src = 'ajax_residential_lease/docs_tab.js?_ts=' + Date.now();
         s.onload = function() { cb && cb(); };
@@ -332,91 +366,166 @@ $lease_id = $lease['rl_lease_id'] ?? 0;
     function loadLandTabOnce() {
         var container = document.getElementById('land-tab-container');
         if (!container || container.getAttribute('data-loaded') === '1') return;
-        container.innerHTML = '<div class="land-tab-loader" style="text-align:center;padding:16px">\
-        <img src="../img/Loading_icon.gif" alt="Loading..." style="width:248px;height:auto" />\
-      </div>';
-        var url =
-            'ajax_residential_lease/tab_land_infomation_render.php?id=<?php echo htmlspecialchars($md5_ben_id ?? "", ENT_QUOTES); ?>&_ts=' +
-            Date.now();
+        container.innerHTML = '<div style="text-align:center;padding:16px"><img src="../img/Loading_icon.gif" alt="Loading..." style="width:248px;height:auto" /></div>';
+        var url = 'ajax_residential_lease/tab_land_infomation_render.php?id=<?php echo htmlspecialchars($md5_ben_id ?? "", ENT_QUOTES); ?>&_ts=' + Date.now();
         ensureLeafletLoaded(function() {
-            fetch(url)
-                .then(function(r) { return r.text(); })
-                .then(function(html) {
-                    container.innerHTML = html;
-                    try { executeScripts(container); } catch (e) {}
-                    container.setAttribute('data-loaded', '1');
-                })
-                .catch(function() {
-                    container.innerHTML = '<div class="text-danger">Failed to load land information.</div>';
-                });
+            fetch(url).then(r => r.text()).then(html => {
+                container.innerHTML = html;
+                try { executeScripts(container); } catch(e) {}
+                container.setAttribute('data-loaded', '1');
+            }).catch(() => container.innerHTML = '<div class="text-danger">Failed to load.</div>');
         });
     }
 
     function loadCreateLeaseTabOnce() {
         var cont = document.getElementById('rl-create-lease-container');
         if (!cont || cont.getAttribute('data-loaded') === '1') return;
-        cont.innerHTML = '<div style="text-align:center;padding:16px">\
-        <img src="../img/Loading_icon.gif" alt="Loading..." style="width:96px;height:auto" />\
-      </div>';
-        var url =
-            'ajax_residential_lease/create_lease_render.php?id=<?php echo htmlspecialchars($md5_ben_id ?? "", ENT_QUOTES); ?>&_ts=' +
-            Date.now();
-        fetch(url)
-            .then(function(r) { return r.text(); })
-            .then(function(html) {
-                cont.innerHTML = html;
-                try { executeScripts(cont); } catch (e) {}
-                cont.setAttribute('data-loaded', '1');
-            })
-            .catch(function() {
-                cont.innerHTML = '<div class="text-danger">Failed to load.</div>';
-            });
+        cont.innerHTML = LOADER_HTML;
+        var url = 'ajax_residential_lease/create_lease_render.php?id=<?php echo htmlspecialchars($md5_ben_id ?? "", ENT_QUOTES); ?>&_ts=' + Date.now();
+        fetch(url).then(r => r.text()).then(html => {
+            cont.innerHTML = html;
+            try { executeScripts(cont); } catch(e) {}
+            cont.setAttribute('data-loaded', '1');
+        }).catch(() => cont.innerHTML = '<div class="text-danger">Failed to load.</div>');
     }
 
-    // Tab switching mirror from LTL
+    window.loadRLDashboard = function(force) {
+        var cont = document.getElementById('lease-dashboard-container');
+        if (!cont) return;
+        if (cont.getAttribute('data-loaded') === '1' && !force) return;
+        cont.innerHTML = LOADER_HTML;
+        var url = 'ajax_residential_lease/lease_dashboard_render.php?id=<?php echo htmlspecialchars($md5_ben_id ?? "", ENT_QUOTES); ?>&_ts=' + Date.now();
+        fetch(url).then(r => r.text()).then(html => {
+            cont.innerHTML = html;
+            try { executeScripts(cont); } catch(e) {}
+            cont.setAttribute('data-loaded', '1');
+        }).catch(() => cont.innerHTML = '<div class="text-danger">Failed to load dashboard.</div>');
+    };
+
+    function loadScheduleTab() {
+        var sc = document.getElementById('ltl-schedule-container');
+        if (!sc) return;
+        sc.innerHTML = LOADER_HTML;
+        var url = 'ajax_residential_lease/lease_schedule_render.php?id=<?php echo htmlspecialchars($md5_ben_id ?? "", ENT_QUOTES); ?>&_ts=' + Date.now();
+        fetch(url).then(r => r.text()).then(html => {
+            sc.innerHTML = html;
+            try { executeScripts(sc); } catch(e) {}
+        }).catch(() => sc.innerHTML = '<div class="text-danger">Failed to load schedule.</div>');
+    }
+
+    function loadSchedulePaymentTab() {
+        var spc = document.getElementById('ltl-schedule-payment-container');
+        if (!spc) return;
+        spc.innerHTML = LOADER_HTML;
+        var url = 'ajax_residential_lease/lease_schedule_payment_render.php?id=<?php echo htmlspecialchars($md5_ben_id ?? "", ENT_QUOTES); ?>&_ts=' + Date.now();
+        fetch(url).then(r => r.text()).then(html => {
+            spc.innerHTML = html;
+            try { executeScripts(spc); } catch(e) {}
+        }).catch(() => spc.innerHTML = '<div class="text-danger">Failed to load payment-based schedule.</div>');
+    }
+
+    function loadPaymentTab() {
+        var pc = document.getElementById('ltl-payment-container');
+        if (!pc) return;
+        pc.innerHTML = LOADER_HTML;
+        var url = 'ajax_residential_lease/payment_tab_render.php?id=<?php echo htmlspecialchars($md5_ben_id ?? "", ENT_QUOTES); ?>&_ts=' + Date.now();
+        fetch(url).then(r => r.text()).then(html => {
+            pc.innerHTML = html;
+            try { executeScripts(pc); } catch(e) {}
+        }).catch(() => pc.innerHTML = '<div class="text-danger">Failed to load payments.</div>');
+    }
+
+    function loadFieldVisitsTab() {
+        var fv = document.getElementById('ltl-field-visit-container');
+        if (!fv) return;
+        fv.innerHTML = LOADER_HTML;
+        var url = 'ajax_residential_lease/field_visits_render.php?id=<?php echo htmlspecialchars($md5_ben_id ?? "", ENT_QUOTES); ?>&_ts=' + Date.now();
+        fetch(url).then(r => r.text()).then(html => {
+            fv.innerHTML = html;
+            try { executeScripts(fv); } catch(e) {}
+        }).catch(() => fv.innerHTML = '<div class="text-danger">Failed to load field visits.</div>');
+    }
+
+    function loadRemindersTab() {
+        var rem = document.getElementById('ltl-reminders-container');
+        if (!rem) return;
+        rem.innerHTML = LOADER_HTML;
+        var url = 'ajax_residential_lease/reminders_tab_render.php?id=<?php echo htmlspecialchars($md5_ben_id ?? "", ENT_QUOTES); ?>&_ts=' + Date.now();
+        fetch(url).then(r => r.text()).then(html => {
+            rem.innerHTML = html;
+            try { executeScripts(rem); } catch(e) {}
+        }).catch(() => rem.innerHTML = '<div class="text-danger">Failed to load reminders.</div>');
+    }
+
+    function loadWriteOffTab() {
+        var woc = document.getElementById('ltl-write-off-container');
+        if (!woc) return;
+        woc.innerHTML = LOADER_HTML;
+        var url = 'ajax_residential_lease/write_off_tab_render.php?id=<?php echo htmlspecialchars($md5_ben_id ?? "", ENT_QUOTES); ?>&_ts=' + Date.now();
+        fetch(url).then(r => r.text()).then(html => {
+            woc.innerHTML = html;
+            try { executeScripts(woc); } catch(e) {}
+        }).catch(() => woc.innerHTML = '<div class="text-danger">Failed to load write-offs.</div>');
+    }
+
+    // Tab switching
     document.querySelectorAll('#submenu-list a').forEach(function(link) {
         link.addEventListener('click', function(e) {
             e.preventDefault();
             var target = this.getAttribute('data-target');
             if (!target) return;
-            document.querySelectorAll('.submenu-section').forEach(function(sec) {
-                sec.classList.add('d-none');
-            });
+            document.querySelectorAll('.submenu-section').forEach(sec => sec.classList.add('d-none'));
             document.querySelector(target)?.classList.remove('d-none');
-            document.querySelectorAll('#submenu-list a').forEach(function(l) {
-                l.classList.remove('active');
-            });
+            document.querySelectorAll('#submenu-list a').forEach(l => l.classList.remove('active'));
             this.classList.add('active');
-            if (target === '#land-tab') {
-                loadLandTabOnce();
-            }
-            if (target === '#create_leases') {
-                loadCreateLeaseTabOnce();
-            }
-            if (target === '#request_letter') {
-                ensureDocsScriptLoaded(function() {
-                    if (window.RLDocs) {
-                        window.RLDocs.init(MD5_BEN_ID);
-                    }
-                });
-            }
+
+            if (target === '#land-tab') loadLandTabOnce();
+            if (target === '#land-dashboard') window.loadRLDashboard(true);
+            if (target === '#create_leases') loadCreateLeaseTabOnce();
+            if (target === '#request_letter') ensureDocsScriptLoaded(() => window.RLDocs && window.RLDocs.init(MD5_BEN_ID));
+            if (target === '#ltl_schedule') loadScheduleTab();
+            if (target === '#ltl_schedule_payment') loadSchedulePaymentTab();
+            if (target === '#payment') loadPaymentTab();
+            if (target === '#field_visits') loadFieldVisitsTab();
+            if (target === '#write-off') loadWriteOffTab();
+            if (target === '#tab3') loadRemindersTab();
         });
     });
 
+    // Initial load for active tab
     var active = document.querySelector('#submenu-list a.active');
-    if (active && active.getAttribute('data-target') === '#land-tab') {
-        loadLandTabOnce();
+    if (active) {
+        var t = active.getAttribute('data-target');
+        if (t === '#land-tab') loadLandTabOnce();
+        if (t === '#land-dashboard') window.loadRLDashboard(true);
+        if (t === '#create_leases') loadCreateLeaseTabOnce();
+        if (t === '#request_letter') ensureDocsScriptLoaded(() => window.RLDocs && window.RLDocs.init(MD5_BEN_ID));
+        if (t === '#ltl_schedule') loadScheduleTab();
+        if (t === '#payment') loadPaymentTab();
+        if (t === '#field_visits') loadFieldVisitsTab();
+        if (t === '#write-off') loadWriteOffTab();
+        if (t === '#tab3') loadRemindersTab();
     }
-    if (active && active.getAttribute('data-target') === '#create_leases') {
-        loadCreateLeaseTabOnce();
-    }
-    if (active && active.getAttribute('data-target') === '#request_letter') {
-        ensureDocsScriptLoaded(function() {
-            if (window.RLDocs) {
-                window.RLDocs.init(MD5_BEN_ID);
-            }
-        });
-    }
+
+    // Event listeners for refresh
+    window.addEventListener('rl:payments-updated', function() {
+        loadPaymentTab();
+        loadSchedulePaymentTab();
+        window.loadRLDashboard(true);
+    });
+    window.addEventListener('rl:schedule-updated', function() {
+        loadScheduleTab();
+        loadSchedulePaymentTab();
+        window.loadRLDashboard(true);
+    });
+    window.addEventListener('rl:writeoff-updated', function() {
+        loadWriteOffTab();
+        loadScheduleTab();
+        loadSchedulePaymentTab();
+        window.loadRLDashboard(true);
+    });
+    window.addEventListener('rl:fieldvisits-updated', loadFieldVisitsTab);
+    window.addEventListener('rl:reminders-updated', loadRemindersTab);
 })();
 </script>
 

@@ -194,8 +194,12 @@ require_once dirname(__DIR__, 2) . '/auth.php';
             if (resp && resp.success && resp.data) {
                 var d = resp.data;
                 $('#rl_land_id').val(d.land_id || '');
-                $('#rl_ds_id').val(d.ds_id || '').trigger('change');
-                $('#rl_gn_id').val(d.gn_id || '');
+                // Set DS value (convert to string for proper option matching)
+                var dsVal = d.ds_id ? String(d.ds_id) : '';
+                $('#rl_ds_id').val(dsVal).trigger('change');
+                // Set GN value (convert to string for proper option matching) and trigger change for Select2
+                var gnVal = d.gn_id ? String(d.gn_id) : '';
+                $('#rl_gn_id').val(gnVal).trigger('change');
                 $('#rl_land_address').val(d.land_address || '');
                 $('#rl_developed_status').val(d.developed_status || 'Not Developed');
                 $('#rl_sketch_plan_no').val(d.sketch_plan_no || '');
@@ -282,14 +286,22 @@ require_once dirname(__DIR__, 2) . '/auth.php';
             initMap();
         }
     }, 200);
-    // Delay load to allow map/init
-    setTimeout(loadLand, 300);
-    // Enhance GN select with select2 if available
+    
+    // Initialize Select2 on DS and GN selects first
+    if (window.jQuery && $('#rl_ds_id').length) {
+        $('#rl_ds_id').select2({
+            width: '100%',
+            dropdownParent: $('#rl_land_form').closest('.modal, body')
+        });
+    }
     if (window.jQuery && $('#rl_gn_id').length) {
         $('#rl_gn_id').select2({
             width: '100%',
             dropdownParent: $('#rl_land_form').closest('.modal, body')
         });
     }
+    
+    // Delay load to allow map/init and Select2 to be fully ready
+    setTimeout(loadLand, 400);
 })();
 </script>

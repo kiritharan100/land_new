@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Dec 30, 2025 at 01:00 PM
+-- Generation Time: Jan 01, 2026 at 02:15 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.0.30
 
@@ -166,7 +166,7 @@ CREATE TABLE `leases` (
   `revision_percentage` decimal(5,2) DEFAULT 20.00,
   `start_date` date NOT NULL,
   `end_date` date NOT NULL,
-  `status` enum('active','expired','cancelled') DEFAULT 'active',
+  `status` enum('inactive','active','expired','cancelled') DEFAULT 'active',
   `created_by` int(11) NOT NULL,
   `created_on` datetime DEFAULT current_timestamp(),
   `approved_date` date DEFAULT NULL,
@@ -180,7 +180,9 @@ CREATE TABLE `leases` (
   `updated_on` date DEFAULT NULL,
   `lease_status` int(11) NOT NULL DEFAULT 1,
   `first_lease` int(11) NOT NULL DEFAULT 1,
-  `last_lease_annual_value` decimal(10,2) NOT NULL
+  `last_lease_annual_value` decimal(10,2) NOT NULL,
+  `inactive_date` date DEFAULT NULL,
+  `inactive_reason` varchar(300) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
 
 -- --------------------------------------------------------
@@ -544,6 +546,253 @@ CREATE TABLE `payment_record` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `rl_beneficiaries`
+--
+
+CREATE TABLE `rl_beneficiaries` (
+  `rl_ben_id` int(11) NOT NULL,
+  `md5_ben_id` varchar(255) NOT NULL,
+  `name` varchar(200) NOT NULL,
+  `name_tamil` varchar(150) NOT NULL,
+  `name_sinhala` varchar(150) NOT NULL,
+  `location_id` int(11) NOT NULL,
+  `address` text DEFAULT NULL,
+  `district` varchar(100) DEFAULT 'Trincomalee',
+  `ds_division_id` int(11) DEFAULT NULL,
+  `ds_division_text` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci DEFAULT NULL,
+  `gn_division_id` int(11) DEFAULT NULL,
+  `gn_division_text` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci DEFAULT NULL,
+  `nic_reg_no` varchar(50) NOT NULL,
+  `dob` date DEFAULT NULL,
+  `nationality` varchar(50) NOT NULL,
+  `telephone` varchar(50) NOT NULL,
+  `email` varchar(150) DEFAULT NULL,
+  `language` varchar(50) NOT NULL DEFAULT 'English',
+  `created_by` int(11) DEFAULT NULL,
+  `created_on` timestamp NOT NULL DEFAULT current_timestamp(),
+  `status` int(11) NOT NULL DEFAULT 1,
+  `address_tamil` varchar(250) NOT NULL,
+  `address_sinhala` varchar(250) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `rl_land_document_type`
+--
+
+CREATE TABLE `rl_land_document_type` (
+  `doc_type_id` int(11) NOT NULL,
+  `doc_name` varchar(255) NOT NULL,
+  `doc_group` varchar(255) NOT NULL,
+  `order_no` int(11) NOT NULL,
+  `approval_required` int(11) NOT NULL DEFAULT 0,
+  `status` int(11) NOT NULL DEFAULT 1,
+  `print_url` varchar(255) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `rl_land_files`
+--
+
+CREATE TABLE `rl_land_files` (
+  `id` int(11) NOT NULL,
+  `ben_id` int(11) NOT NULL,
+  `file_type` varchar(150) NOT NULL,
+  `file_url` varchar(250) NOT NULL,
+  `status` int(11) NOT NULL DEFAULT 1,
+  `submitted_date` date DEFAULT NULL,
+  `received_date` date DEFAULT NULL,
+  `referance_no` varchar(150) NOT NULL,
+  `approval_status` varchar(50) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `rl_land_registration`
+--
+
+CREATE TABLE `rl_land_registration` (
+  `land_id` int(11) NOT NULL,
+  `ben_id` int(11) NOT NULL,
+  `ds_id` int(11) NOT NULL,
+  `gn_id` int(11) NOT NULL,
+  `land_address` varchar(255) NOT NULL,
+  `landBoundary` varchar(2000) NOT NULL,
+  `status` varchar(30) NOT NULL DEFAULT '1',
+  `sketch_plan_no` varchar(255) NOT NULL,
+  `plc_plan_no` varchar(255) NOT NULL,
+  `survey_plan_no` varchar(255) NOT NULL,
+  `extent` varchar(50) NOT NULL,
+  `extent_unit` varchar(50) NOT NULL,
+  `extent_ha` varchar(30) NOT NULL,
+  `developed_status` varchar(150) NOT NULL DEFAULT 'Not Developed'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `rl_lease`
+--
+
+CREATE TABLE `rl_lease` (
+  `rl_lease_id` int(11) NOT NULL,
+  `land_id` int(11) NOT NULL,
+  `beneficiary_id` int(11) NOT NULL,
+  `location_id` int(11) NOT NULL,
+  `lease_number` varchar(40) NOT NULL,
+  `file_number` varchar(40) NOT NULL,
+  `is_it_first_ease` int(11) NOT NULL DEFAULT 1,
+  `valuation_amount` decimal(10,2) NOT NULL,
+  `valuvation_date` date DEFAULT NULL,
+  `valuvation_letter_date` date DEFAULT NULL,
+  `premium` decimal(10,2) NOT NULL,
+  `start_date` date DEFAULT NULL,
+  `end_date` date DEFAULT NULL,
+  `status` enum('active','inactive','cancelled','') NOT NULL,
+  `lease_calculation_basic` enum('Valuvation basis','Income basis','','') NOT NULL,
+  `annual_rent_percentage` decimal(10,2) NOT NULL,
+  `ben_income` decimal(10,2) NOT NULL,
+  `initial_annual_rent` decimal(10,2) NOT NULL,
+  `discount_rate` decimal(10,2) NOT NULL,
+  `penalty_rate` decimal(10,2) NOT NULL,
+  `outright_grants_number` varchar(100) NOT NULL,
+  `outright_grants_date` date DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `rl_lease_payments`
+--
+
+CREATE TABLE `rl_lease_payments` (
+  `payment_id` int(11) NOT NULL,
+  `location_id` int(11) NOT NULL,
+  `lease_id` int(11) NOT NULL,
+  `schedule_id` int(11) NOT NULL,
+  `payment_date` date NOT NULL,
+  `amount` decimal(15,2) NOT NULL,
+  `rent_paid` decimal(10,2) NOT NULL,
+  `panalty_paid` decimal(10,2) NOT NULL,
+  `premium_paid` decimal(10,2) NOT NULL,
+  `discount_apply` decimal(10,2) NOT NULL,
+  `current_year_payment` decimal(10,2) NOT NULL,
+  `payment_type` enum('rent','penalty','both') DEFAULT 'both',
+  `receipt_number` varchar(100) DEFAULT NULL,
+  `payment_method` enum('cash','cheque','bank_transfer','online') DEFAULT 'cash',
+  `reference_number` varchar(100) DEFAULT NULL,
+  `notes` text DEFAULT NULL,
+  `status` int(11) NOT NULL DEFAULT 1,
+  `created_by` int(11) NOT NULL,
+  `created_on` datetime DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `rl_lease_payments_detail`
+--
+
+CREATE TABLE `rl_lease_payments_detail` (
+  `id` int(11) NOT NULL,
+  `payment_id` int(11) NOT NULL,
+  `schedule_id` int(11) NOT NULL,
+  `rent_paid` decimal(10,2) NOT NULL,
+  `penalty_paid` decimal(10,2) NOT NULL,
+  `premium_paid` decimal(10,2) NOT NULL,
+  `discount_apply` decimal(10,2) NOT NULL,
+  `current_year_payment` decimal(10,2) NOT NULL,
+  `status` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `rl_lease_schedules`
+--
+
+CREATE TABLE `rl_lease_schedules` (
+  `schedule_id` int(11) NOT NULL,
+  `lease_id` int(11) NOT NULL,
+  `schedule_year` year(4) NOT NULL,
+  `due_date` date NOT NULL DEFAULT current_timestamp(),
+  `start_date` date DEFAULT NULL,
+  `end_date` date DEFAULT NULL,
+  `base_amount` decimal(15,2) NOT NULL,
+  `premium` decimal(10,2) NOT NULL,
+  `premium_paid` decimal(10,2) NOT NULL,
+  `annual_amount` decimal(15,2) NOT NULL,
+  `panalty` decimal(10,2) NOT NULL,
+  `paid_rent` decimal(10,2) NOT NULL,
+  `discount_apply` decimal(10,2) NOT NULL,
+  `total_paid` decimal(10,2) NOT NULL,
+  `panalty_paid` decimal(10,2) NOT NULL,
+  `revision_number` int(11) DEFAULT 0,
+  `is_revision_year` tinyint(1) DEFAULT 0,
+  `penalty_rate` decimal(5,2) DEFAULT 10.00,
+  `status` enum('pending','paid','overdue') DEFAULT 'pending',
+  `created_on` datetime DEFAULT current_timestamp(),
+  `penalty_last_calc` date DEFAULT NULL,
+  `penalty_updated_by` int(11) NOT NULL,
+  `penalty_remarks` varchar(255) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `rl_premium_change`
+--
+
+CREATE TABLE `rl_premium_change` (
+  `id` int(11) NOT NULL,
+  `lease_id` int(11) NOT NULL,
+  `schedule_id` int(11) NOT NULL,
+  `old_amount` decimal(10,2) NOT NULL,
+  `new_amount` decimal(10,2) NOT NULL,
+  `created_by` int(11) NOT NULL,
+  `record_on` datetime NOT NULL,
+  `status` int(11) NOT NULL DEFAULT 1
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `rl_reminders`
+--
+
+CREATE TABLE `rl_reminders` (
+  `id` int(11) NOT NULL,
+  `lease_id` int(11) NOT NULL,
+  `reminders_type` varchar(50) NOT NULL,
+  `sent_date` date DEFAULT NULL,
+  `status` int(11) NOT NULL DEFAULT 1,
+  `created_by` int(11) NOT NULL,
+  `created_on` varchar(50) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `rl_write_off`
+--
+
+CREATE TABLE `rl_write_off` (
+  `id` int(11) NOT NULL,
+  `lease_id` int(11) NOT NULL,
+  `schedule_id` int(11) NOT NULL,
+  `write_off_amount` decimal(10,2) NOT NULL,
+  `created_by` int(11) NOT NULL,
+  `created_on` datetime NOT NULL DEFAULT current_timestamp(),
+  `status` int(11) NOT NULL DEFAULT 1
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `sms_log`
 --
 
@@ -795,6 +1044,74 @@ ALTER TABLE `payment_record`
   ADD PRIMARY KEY (`id`);
 
 --
+-- Indexes for table `rl_beneficiaries`
+--
+ALTER TABLE `rl_beneficiaries`
+  ADD PRIMARY KEY (`rl_ben_id`);
+
+--
+-- Indexes for table `rl_land_document_type`
+--
+ALTER TABLE `rl_land_document_type`
+  ADD PRIMARY KEY (`doc_type_id`);
+
+--
+-- Indexes for table `rl_land_files`
+--
+ALTER TABLE `rl_land_files`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `rl_land_registration`
+--
+ALTER TABLE `rl_land_registration`
+  ADD PRIMARY KEY (`land_id`);
+
+--
+-- Indexes for table `rl_lease`
+--
+ALTER TABLE `rl_lease`
+  ADD PRIMARY KEY (`rl_lease_id`);
+
+--
+-- Indexes for table `rl_lease_payments`
+--
+ALTER TABLE `rl_lease_payments`
+  ADD PRIMARY KEY (`payment_id`),
+  ADD KEY `lease_payments_ibfk_1` (`lease_id`);
+
+--
+-- Indexes for table `rl_lease_payments_detail`
+--
+ALTER TABLE `rl_lease_payments_detail`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `rl_lease_schedules`
+--
+ALTER TABLE `rl_lease_schedules`
+  ADD PRIMARY KEY (`schedule_id`),
+  ADD KEY `lease_id` (`lease_id`);
+
+--
+-- Indexes for table `rl_premium_change`
+--
+ALTER TABLE `rl_premium_change`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `rl_reminders`
+--
+ALTER TABLE `rl_reminders`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `rl_write_off`
+--
+ALTER TABLE `rl_write_off`
+  ADD PRIMARY KEY (`id`);
+
+--
 -- Indexes for table `sms_log`
 --
 ALTER TABLE `sms_log`
@@ -970,6 +1287,72 @@ ALTER TABLE `payment_category`
 -- AUTO_INCREMENT for table `payment_record`
 --
 ALTER TABLE `payment_record`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `rl_beneficiaries`
+--
+ALTER TABLE `rl_beneficiaries`
+  MODIFY `rl_ben_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `rl_land_document_type`
+--
+ALTER TABLE `rl_land_document_type`
+  MODIFY `doc_type_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `rl_land_files`
+--
+ALTER TABLE `rl_land_files`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `rl_land_registration`
+--
+ALTER TABLE `rl_land_registration`
+  MODIFY `land_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `rl_lease`
+--
+ALTER TABLE `rl_lease`
+  MODIFY `rl_lease_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `rl_lease_payments`
+--
+ALTER TABLE `rl_lease_payments`
+  MODIFY `payment_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `rl_lease_payments_detail`
+--
+ALTER TABLE `rl_lease_payments_detail`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `rl_lease_schedules`
+--
+ALTER TABLE `rl_lease_schedules`
+  MODIFY `schedule_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `rl_premium_change`
+--
+ALTER TABLE `rl_premium_change`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `rl_reminders`
+--
+ALTER TABLE `rl_reminders`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `rl_write_off`
+--
+ALTER TABLE `rl_write_off`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --

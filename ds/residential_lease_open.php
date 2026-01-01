@@ -203,7 +203,7 @@ if ($land && !empty($land['land_id'])) {
                         <a href="#" class="list-group-item list-group-item-action"
                             data-target="#ltl_schedule_payment">Schedule - Payment</a>
                         <a href="#" class="list-group-item list-group-item-action" data-target="#payment">Payment</a>
-                        <a href="#" class="list-group-item list-group-item-action" data-target="#payment_valuation">Payment - Valuation</a>
+                        <a href="#" class="list-group-item list-group-item-action" data-target="#payment_valuation">Payment for Grant</a>
                         <a href="#" class="list-group-item list-group-item-action" data-target="#field_visits">Field
                             Visits</a>
                         <a href="#" class="list-group-item list-group-item-action"
@@ -298,7 +298,7 @@ if ($land && !empty($land['land_id'])) {
                     </div>
 
                     <div id="payment_valuation" class="submenu-section d-none">
-                        <h5 class="font-weight-bold">Payment - Valuation</h5>
+                        <h5 class="font-weight-bold">Payment for Grant</h5>
                         <hr>
                         <div id="rl-valuation-payment-container" data-loaded="0">
                             <div style="text-align:center;padding:16px">

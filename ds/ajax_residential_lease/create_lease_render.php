@@ -263,6 +263,70 @@ if ($end_date_raw === '' && $start_date_raw) {
         <?php if ($lease && hasPermission(20)): ?>
         <hr>
         <h5 class="font-weight-bold mb-3">Update Grant Details</h5>
+        
+        <?php
+        // Calculate Valuation Summary
+        $total_valuation = (float)($lease['valuation_amount'] ?? 0);
+        $total_rent_premium_paid = 0.0;
+        $total_discount_applied = 0.0;
+        $valuation_payments_total = 0.0;
+        
+        if ($lease_id > 0) {
+            // Sum of paid_rent + premium_paid + discount_apply from schedules
+            $sql_paid = "SELECT 
+                COALESCE(SUM(paid_rent), 0) AS total_rent_paid,
+                COALESCE(SUM(premium_paid), 0) AS total_premium_paid,
+                COALESCE(SUM(discount_apply), 0) AS total_discount
+                FROM rl_lease_schedules 
+                WHERE lease_id = ?";
+            if ($st = mysqli_prepare($con, $sql_paid)) {
+                mysqli_stmt_bind_param($st, 'i', $lease_id);
+                mysqli_stmt_execute($st);
+                $rs = mysqli_stmt_get_result($st);
+                if ($row = mysqli_fetch_assoc($rs)) {
+                    $total_rent_premium_paid = (float)$row['total_rent_paid'] + (float)$row['total_premium_paid'];
+                    $total_discount_applied = (float)$row['total_discount'];
+                }
+                mysqli_stmt_close($st);
+            }
+            
+            // Valuation payments already made
+            $sql_val = "SELECT COALESCE(SUM(amount), 0) AS total FROM rl_valuvation_paid WHERE rl_lease_id = ? AND status = 1";
+            if ($stv = mysqli_prepare($con, $sql_val)) {
+                mysqli_stmt_bind_param($stv, 'i', $lease_id);
+                mysqli_stmt_execute($stv);
+                $rsv = mysqli_stmt_get_result($stv);
+                if ($rowv = mysqli_fetch_assoc($rsv)) {
+                    $valuation_payments_total = (float)$rowv['total'];
+                }
+                mysqli_stmt_close($stv);
+            }
+        }
+        
+        $total_settled = $total_rent_premium_paid + $total_discount_applied;
+        $balance_to_pay = $total_valuation - $total_settled - $valuation_payments_total;
+        $grant_fields_enabled = ($balance_to_pay <= 0);
+        ?>
+        
+        <!-- Valuation Summary -->
+        <div class="row mb-3">
+            <div class="col-sm-12">
+                <div class="mb-0" role="alert"
+                    style="background:#f8f9fa;border:2px solid <?php echo $grant_fields_enabled ? '#28a745' : '#17a2b8'; ?>;color:#333;font-size:1rem;font-weight:500;padding:12px 16px;border-radius:6px;">
+                    <span style="font-weight:700;text-transform:uppercase;">Valuation Summary:</span><br>
+                    Total Valuation: <strong>Rs. <?php echo number_format($total_valuation, 2); ?></strong> &nbsp;|
+                    Rent + Premium + Discount Paid: <strong>Rs. <?php echo number_format($total_settled, 2); ?></strong> &nbsp;|
+                    Valuation Payments: <strong>Rs. <?php echo number_format($valuation_payments_total, 2); ?></strong><br>
+                    <?php if ($grant_fields_enabled): ?>
+                    <span style="font-weight:800;color:#28a745;">Balance to be Paid: Rs. <?php echo number_format($balance_to_pay, 2); ?> ✓ Grant Details can be updated</span>
+                    <?php else: ?>
+                    <span style="font-weight:800;color:#dc3545;">Balance to be Paid: Rs. <?php echo number_format($balance_to_pay, 2); ?></span>
+                    <br><small class="text-muted">Grant details will be enabled when balance is fully paid (≤ 0)</small>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+        
         <form id="rlGrantDetailsForm">
             <input type="hidden" name="rl_lease_id" value="<?php echo (int) $lease_id; ?>">
             <div class="row">
@@ -271,7 +335,8 @@ if ($end_date_raw === '' && $start_date_raw) {
                         <label>Outright Grants Number</label>
                         <input type="text" class="form-control" id="rl_grant_outright_grants_number"
                             name="outright_grants_number"
-                            value="<?php echo htmlspecialchars($lease['outright_grants_number'] ?? ''); ?>">
+                            value="<?php echo htmlspecialchars($lease['outright_grants_number'] ?? ''); ?>"
+                            <?php echo !$grant_fields_enabled ? 'disabled' : ''; ?>>
                     </div>
                 </div>
                 <div class="col-md-4">
@@ -279,14 +344,16 @@ if ($end_date_raw === '' && $start_date_raw) {
                         <label>Outright Grants Date</label>
                         <input type="date" class="form-control" id="rl_grant_outright_grants_date"
                             name="outright_grants_date"
-                            value="<?php echo fmtDate($lease['outright_grants_date'] ?? null); ?>">
+                            value="<?php echo fmtDate($lease['outright_grants_date'] ?? null); ?>"
+                            <?php echo !$grant_fields_enabled ? 'disabled' : ''; ?>>
                     </div>
                 </div>
                 <div class="col-md-4">
                     <div class="form-group">
                         <label>&nbsp;</label>
                         <div>
-                            <button type="button" class="btn btn-primary" id="rl_grant_save_btn">
+                            <button type="button" class="btn btn-primary" id="rl_grant_save_btn"
+                                <?php echo !$grant_fields_enabled ? 'disabled' : ''; ?>>
                                 <i class="fa fa-save"></i> Save Grant Details
                             </button>
                         </div>

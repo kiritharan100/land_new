@@ -38,7 +38,7 @@ $lease_id = $lease['rl_lease_id'] ?? 0;
 ?>
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="card-header-text mb-0">Payment - Valuation (Outright Grants)</h5>
+        <h5 class="card-header-text mb-0">Payment for Grant (Outright Grants)</h5>
         <div>
             <?php if ($lease && hasPermission(18)): ?>
             <button type="button" class="btn btn-success btn-sm" id="rl-add-valuation-payment-btn">
@@ -119,8 +119,7 @@ $lease_id = $lease['rl_lease_id'] ?? 0;
                     style="background:#ffffff;border:2px solid #17a2b8;color:#17a2b8;font-size:1.15rem;font-weight:600;padding:14px 16px;border-radius:6px;letter-spacing:0.5px;">
                     <span style="font-weight:700;text-transform:uppercase;">Valuation Summary:</span><br>
                     Total Valuation: <strong>Rs. <?= number_format($total_valuation, 2) ?></strong> &nbsp;|
-                    Rent + Premium Paid: <strong>Rs. <?= number_format($total_rent_premium_paid, 2) ?></strong> &nbsp;|
-                    Discount Applied: <strong>Rs. <?= number_format($total_discount_applied, 2) ?></strong> &nbsp;|
+                    Rent + Premium + Discount Paid: <strong>Rs. <?= number_format($total_settled, 2) ?></strong> &nbsp;|
                     Valuation Payments: <strong>Rs. <?= number_format($valuation_payments_total, 2) ?></strong><br>
                     <span style="font-weight:800;color:#dc3545;">Balance to be Paid: Rs. <?= number_format($balance_to_pay, 2) ?></span>
                 </div>

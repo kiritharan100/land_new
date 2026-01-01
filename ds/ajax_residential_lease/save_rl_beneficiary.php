@@ -74,9 +74,9 @@ if ($id) {
         VALUES 
         (" . ($location_id ? "'" . mysqli_real_escape_string($con, $location_id) . "'" : "NULL") . ",'$name','$name_tamil','$name_sinhala','$address','$address_tamil','$address_sinhala','$district'," . ($ds_division_id ? "'" . mysqli_real_escape_string($con, $ds_division_id) . "'" : "NULL") . ",'$ds_division_text'," . ($gn_division_id ? "'" . mysqli_real_escape_string($con, $gn_division_id) . "'" : "NULL") . ",'$gn_division_text','$nic'," . $dob_sql . ",'$nat','$tel','$email','$language')";
     if (mysqli_query($con, $sql)) {
-        $new_id = mysqli_insert_id($con);
+        $new_id = mysqli_insert_id($con);   
         if ($new_id) {
-            $md5_ben = md5($new_id . "RL");
+            $md5_ben = md5($new_id . "RL-key-dtecstudio");
             mysqli_query($con, "UPDATE rl_beneficiaries SET md5_ben_id='$md5_ben' WHERE rl_ben_id=$new_id");
         }
         UserLog('2', 'RL Beneficiary Created', 'ID=' . $new_id . ' Name=' . $name, $new_id);

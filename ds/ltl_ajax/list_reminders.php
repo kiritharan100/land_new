@@ -1,7 +1,72 @@
 <?php
 require_once dirname(__DIR__, 2) . '/db.php';
 require_once dirname(__DIR__, 2) . '/auth.php';
-$lease_id = isset($_GET['lease_id']) ? (int)$_GET['lease_id'] : 0;
+
+// Permission check
+if (!hasPermission(20)) {
+    echo '<tr><td colspan="5" class="text-danger text-center">Access denied</td></tr>';
+    exit;
+}
+
+// Resolve user's location from cookie for IDOR protection
+$user_location_id = '';
+if (isset($_COOKIE['client_cook']) && $_COOKIE['client_cook'] !== '') {
+    $selected_client = $_COOKIE['client_cook'];
+    if ($stmtLoc = mysqli_prepare($con, 'SELECT c_id FROM client_registration WHERE md5_client = ? LIMIT 1')) {
+        mysqli_stmt_bind_param($stmtLoc, 's', $selected_client);
+        mysqli_stmt_execute($stmtLoc);
+        $resLoc = mysqli_stmt_get_result($stmtLoc);
+        if ($resLoc && ($rowLoc = mysqli_fetch_assoc($resLoc))) {
+            $user_location_id = $rowLoc['c_id'];
+        }
+        mysqli_stmt_close($stmtLoc);
+    }
+}
+
+// Accept md5_ben_id (id parameter) and derive lease_id securely
+$lease_id = 0;
+$md5_ben_id = isset($_GET['id']) ? $_GET['id'] : '';
+
+if ($md5_ben_id !== '') {
+    if ($stmt = mysqli_prepare($con, 'SELECT ben_id, location_id FROM beneficiaries WHERE md5_ben_id = ? LIMIT 1')) {
+        mysqli_stmt_bind_param($stmt, 's', $md5_ben_id);
+        mysqli_stmt_execute($stmt);
+        $res = mysqli_stmt_get_result($stmt);
+        if ($res && ($ben = mysqli_fetch_assoc($res))) {
+            // IDOR Protection
+            if ($user_location_id !== '' && (string)$ben['location_id'] !== (string)$user_location_id) {
+                echo '<tr><td colspan="5" class="text-danger text-center">Access denied</td></tr>';
+                mysqli_stmt_close($stmt);
+                exit;
+            }
+            
+            $ben_id = (int)$ben['ben_id'];
+            
+            // Get land_id → lease_id
+            if ($st2 = mysqli_prepare($con, 'SELECT land_id FROM ltl_land_registration WHERE ben_id = ? ORDER BY land_id DESC LIMIT 1')) {
+                mysqli_stmt_bind_param($st2, 'i', $ben_id);
+                mysqli_stmt_execute($st2);
+                $r2 = mysqli_stmt_get_result($st2);
+                if ($r2 && ($land = mysqli_fetch_assoc($r2))) {
+                    $land_id = (int)$land['land_id'];
+                    
+                    if ($st3 = mysqli_prepare($con, 'SELECT lease_id FROM leases WHERE land_id = ? ORDER BY created_on DESC LIMIT 1')) {
+                        mysqli_stmt_bind_param($st3, 'i', $land_id);
+                        mysqli_stmt_execute($st3);
+                        $r3 = mysqli_stmt_get_result($st3);
+                        if ($r3 && ($lease = mysqli_fetch_assoc($r3))) {
+                            $lease_id = (int)$lease['lease_id'];
+                        }
+                        mysqli_stmt_close($st3);
+                    }
+                }
+                mysqli_stmt_close($st2);
+            }
+        }
+        mysqli_stmt_close($stmt);
+    }
+}
+
 if ($lease_id <= 0) {
   echo '<tr><td colspan="5" class="text-danger text-center">Invalid lease.</td></tr>';
   exit;

@@ -9,18 +9,17 @@ function jsonError($msg) {
     exit;
 }
 
-function resolveLocationId(mysqli $con): int {
-    $loc = 0;
-    if (isset($_REQUEST['location_id']) && (int)$_REQUEST['location_id'] > 0) {
-        $loc = (int)$_REQUEST['location_id'];
-    } elseif (isset($_COOKIE['client_cook'])) {
+// IDOR Protection: Resolve user's ACTUAL location from cookie (not from request)
+function getUserLocationFromCookie(mysqli $con): string {
+    $loc = '';
+    if (isset($_COOKIE['client_cook']) && $_COOKIE['client_cook'] !== '') {
         $md5 = $_COOKIE['client_cook'];
         if ($st = $con->prepare("SELECT c_id FROM client_registration WHERE md5_client=? LIMIT 1")) {
             $st->bind_param('s', $md5);
             $st->execute();
             $res = $st->get_result();
             if ($res && ($row = $res->fetch_assoc())) {
-                $loc = (int)$row['c_id'];
+                $loc = $row['c_id'];
             }
             $st->close();
         }
@@ -30,7 +29,20 @@ function resolveLocationId(mysqli $con): int {
 
 $action = $_REQUEST['action'] ?? 'list';
 $userId = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : 0;
-$locationId = resolveLocationId($con);
+
+// Get user's actual location from cookie
+$userLocationId = getUserLocationFromCookie($con);
+
+// Check if a different location_id is being requested via parameter
+$requestedLocationId = isset($_REQUEST['location_id']) && $_REQUEST['location_id'] !== '' ? (int)$_REQUEST['location_id'] : 0;
+
+// IDOR Protection: If user has a location, they can only access their own location
+if ($userLocationId !== '' && $requestedLocationId > 0 && (string)$requestedLocationId !== (string)$userLocationId) {
+    jsonError('Access denied');
+}
+
+// Use user's location (not the requested one which could be manipulated)
+$locationId = $userLocationId !== '' ? (int)$userLocationId : 0;
 
 if ($locationId <= 0) {
     jsonError('Location not selected.');

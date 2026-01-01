@@ -264,7 +264,7 @@ if ($md5 !== '') {
         (function() {
             var rDate = document.getElementById('ltl-recovery-date');
             var rBtn = document.getElementById('ltl-recovery-letter-btn');
-            var leaseId = <?= isset($lease['lease_id']) ? (int)$lease['lease_id'] : 0 ?>;
+            var MD5_BEN_ID = <?= json_encode($md5) ?>;
             // Removed outstanding calculation – direct print only
             if (rDate) {
                 rDate.addEventListener('change', function() {
@@ -285,7 +285,6 @@ if ($md5 !== '') {
             // Button stays enabled (no outstanding check)
 
             // ---------------- Reminders Table Logic ----------------
-            var LEASE_ID = leaseId;
             var remTypeEl = document.getElementById('rem-type');
             var remDateEl = document.getElementById('rem-date');
             var remAddBtn = document.getElementById('rem-add-btn');
@@ -304,12 +303,12 @@ if ($md5 !== '') {
             if (remDateEl) remDateEl.addEventListener('change', validateRemInputs);
 
             function loadReminders() {
-                if (!LEASE_ID) {
+                if (!MD5_BEN_ID) {
                     remBody.innerHTML = '<tr><td colspan="5" class="text-danger text-center">No lease.</td></tr>';
                     return;
                 }
                 remBody.innerHTML = '<tr><td colspan="5" class="text-center">Loading...</td></tr>';
-                fetch('ltl_ajax/list_reminders.php?lease_id=' + LEASE_ID + '&_ts=' + Date.now())
+                fetch('ltl_ajax/list_reminders.php?id=' + encodeURIComponent(MD5_BEN_ID) + '&_ts=' + Date.now())
                     .then(r => r.text())
                     .then(html => {
                         remBody.innerHTML = html;
@@ -375,7 +374,7 @@ if ($md5 !== '') {
                     remAddBtn.disabled = true;
                     remAddBtn.innerHTML = '<i class="fa fa-circle-o-notch fa-spin"></i> Saving...';
                     var fd = new URLSearchParams();
-                    fd.append('lease_id', LEASE_ID);
+                    fd.append('id', MD5_BEN_ID);
                     fd.append('reminders_type', t);
                     fd.append('sent_date', d);
                     fetch('ltl_ajax/add_reminder.php', {

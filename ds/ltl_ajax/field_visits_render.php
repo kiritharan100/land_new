@@ -49,6 +49,7 @@ if ($md5 !== '') {
 }
 
 $lease_id = $lease['lease_id'] ?? 0;
+$md5_ben_id = $md5; // Pass the secure identifier to JavaScript
 ?>
 
 <div>
@@ -105,6 +106,7 @@ $lease_id = $lease['lease_id'] ?? 0;
 <script>
 (function(){
 
+    var MD5_BEN_ID = <?= json_encode($md5_ben_id) ?>;
     var LEASE_ID = <?= (int)$lease_id ?>;
 
     var bodyEl = document.getElementById("fv-body");
@@ -138,7 +140,7 @@ $lease_id = $lease['lease_id'] ?? 0;
         addBtn.disabled = true;
         addBtn.innerHTML = '<i class="fa fa-circle-o-notch fa-spin"></i>';
 
-        fetch("ltl_ajax/list_field_visits.php?lease_id=" + LEASE_ID + "&_ts=" + Date.now())
+        fetch("ltl_ajax/list_field_visits.php?id=" + encodeURIComponent(MD5_BEN_ID) + "&_ts=" + Date.now())
         .then(r => r.text())
         .then(html => {
             bodyEl.innerHTML = html;
@@ -170,7 +172,7 @@ $lease_id = $lease['lease_id'] ?? 0;
         addBtn.innerHTML = '<i class="fa fa-circle-o-notch fa-spin"></i> Saving...';
 
         let fd = new URLSearchParams();
-        fd.append("lease_id", LEASE_ID);
+        fd.append("id", MD5_BEN_ID);
         fd.append("date", date);
         fd.append("officers", officers);
         fd.append("status", status);

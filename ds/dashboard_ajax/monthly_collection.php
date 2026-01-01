@@ -3,6 +3,21 @@ require_once dirname(__DIR__, 2) . '/db.php';
 require_once dirname(__DIR__, 2) . '/auth.php';
 header('Content-Type: application/json');
 
+// IDOR Protection: Resolve user's location from cookie
+$user_location_id = '';
+if (isset($_COOKIE['client_cook']) && $_COOKIE['client_cook'] !== '') {
+    $selected_client = $_COOKIE['client_cook'];
+    if ($stmtLoc = mysqli_prepare($con, 'SELECT c_id FROM client_registration WHERE md5_client = ? LIMIT 1')) {
+        mysqli_stmt_bind_param($stmtLoc, 's', $selected_client);
+        mysqli_stmt_execute($stmtLoc);
+        $resLoc = mysqli_stmt_get_result($stmtLoc);
+        if ($resLoc && ($rowLoc = mysqli_fetch_assoc($resLoc))) {
+            $user_location_id = $rowLoc['c_id'];
+        }
+        mysqli_stmt_close($stmtLoc);
+    }
+}
+
 $month = date('Y-m'); // current month
 
 // Accept explicit month override (?month=YYYY-MM) for flexibility
@@ -15,6 +30,12 @@ $locParam = null;
 if (isset($_GET['location_id']) && $_GET['location_id'] !== '') {
     $locParam = (int)$_GET['location_id'];
     if ($locParam <= 0) { $locParam = null; }
+}
+
+// IDOR Protection: If user has a location, they can only query their own location
+if ($user_location_id !== '' && $locParam !== null && (string)$locParam !== (string)$user_location_id) {
+    echo json_encode(['success' => false, 'message' => 'Access denied']);
+    exit;
 }
 
 // Build query joining leases so we only sum payments belonging to leases at given location

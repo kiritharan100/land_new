@@ -232,7 +232,7 @@ if ($md5 !== '') {
         (function() {
             var rDate = document.getElementById('rl-recovery-date');
             var rBtn = document.getElementById('rl-recovery-letter-btn');
-            var leaseId = <?= isset($lease['rl_lease_id']) ? (int)$lease['rl_lease_id'] : 0 ?>;
+            var MD5_BEN_ID = <?= json_encode($md5) ?>;
 
             if (rBtn) {
                 rBtn.addEventListener('click', function() {
@@ -247,7 +247,6 @@ if ($md5 !== '') {
             }
 
             // ---------------- Reminders Table Logic ----------------
-            var LEASE_ID = leaseId;
             var remTypeEl = document.getElementById('rl-rem-type');
             var remDateEl = document.getElementById('rl-rem-date');
             var remAddBtn = document.getElementById('rl-rem-add-btn');
@@ -266,12 +265,12 @@ if ($md5 !== '') {
             if (remDateEl) remDateEl.addEventListener('change', validateRemInputs);
 
             function loadReminders() {
-                if (!LEASE_ID) {
+                if (!MD5_BEN_ID) {
                     remBody.innerHTML = '<tr><td colspan="5" class="text-danger text-center">No lease.</td></tr>';
                     return;
                 }
                 remBody.innerHTML = '<tr><td colspan="5" class="text-center">Loading...</td></tr>';
-                fetch('ajax_residential_lease/list_reminders.php?lease_id=' + LEASE_ID + '&_ts=' + Date.now())
+                fetch('ajax_residential_lease/list_reminders.php?id=' + encodeURIComponent(MD5_BEN_ID) + '&_ts=' + Date.now())
                     .then(r => r.text())
                     .then(html => {
                         remBody.innerHTML = html;
@@ -335,7 +334,7 @@ if ($md5 !== '') {
                     remAddBtn.disabled = true;
                     remAddBtn.innerHTML = '<i class="fa fa-circle-o-notch fa-spin"></i> Saving...';
                     var fd = new URLSearchParams();
-                    fd.append('lease_id', LEASE_ID);
+                    fd.append('id', MD5_BEN_ID);
                     fd.append('reminders_type', t);
                     fd.append('sent_date', d);
                     fetch('ajax_residential_lease/add_reminder.php', {

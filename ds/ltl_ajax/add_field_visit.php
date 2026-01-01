@@ -3,29 +3,80 @@ require_once dirname(__DIR__, 2) . '/db.php';
 require_once dirname(__DIR__, 2) . '/auth.php';
 header('Content-Type: application/json');
 
-$lease_id = intval($_POST['lease_id'] ?? 0);
-$date     = $_POST['date'] ?? '';
-$officers = trim($_POST['officers'] ?? '');   // FIXED NAME
-$vstatus  = trim($_POST['status'] ?? '');     // FIXED NAME
-
-// Validate required fields
-if ($lease_id <= 0 || $date === '' || $officers === '') {
-    echo json_encode(['success'=>false,'message'=>'Missing required fields']);
+// Permission check
+if (!hasPermission(20)) {
+    echo json_encode(['success' => false, 'message' => 'Access denied']);
     exit;
 }
 
-$ben_id = 0;
-if ($lease_id > 0) {
-    $q = "SELECT beneficiary_id FROM leases WHERE lease_id = ? LIMIT 1";
-    if ($stmtB = mysqli_prepare($con, $q)) {
-        mysqli_stmt_bind_param($stmtB, 'i', $lease_id);
-        mysqli_stmt_execute($stmtB);
-        $resB = mysqli_stmt_get_result($stmtB);
-        if ($resB && ($rowB = mysqli_fetch_assoc($resB))) {
-            $ben_id = (int)$rowB['beneficiary_id'];
+$date     = $_POST['date'] ?? '';
+$officers = trim($_POST['officers'] ?? '');
+$vstatus  = trim($_POST['status'] ?? '');
+
+// Resolve user's location from cookie for IDOR protection
+$user_location_id = '';
+if (isset($_COOKIE['client_cook']) && $_COOKIE['client_cook'] !== '') {
+    $selected_client = $_COOKIE['client_cook'];
+    if ($stmtLoc = mysqli_prepare($con, 'SELECT c_id FROM client_registration WHERE md5_client = ? LIMIT 1')) {
+        mysqli_stmt_bind_param($stmtLoc, 's', $selected_client);
+        mysqli_stmt_execute($stmtLoc);
+        $resLoc = mysqli_stmt_get_result($stmtLoc);
+        if ($resLoc && ($rowLoc = mysqli_fetch_assoc($resLoc))) {
+            $user_location_id = $rowLoc['c_id'];
         }
-        mysqli_stmt_close($stmtB);
+        mysqli_stmt_close($stmtLoc);
     }
+}
+
+// Accept md5_ben_id (id parameter) and derive lease_id securely
+$lease_id = 0;
+$ben_id = 0;
+$md5_ben_id = isset($_POST['id']) ? $_POST['id'] : '';
+
+if ($md5_ben_id !== '') {
+    if ($stmt = mysqli_prepare($con, 'SELECT ben_id, location_id FROM beneficiaries WHERE md5_ben_id = ? LIMIT 1')) {
+        mysqli_stmt_bind_param($stmt, 's', $md5_ben_id);
+        mysqli_stmt_execute($stmt);
+        $res = mysqli_stmt_get_result($stmt);
+        if ($res && ($ben = mysqli_fetch_assoc($res))) {
+            // IDOR Protection
+            if ($user_location_id !== '' && (string)$ben['location_id'] !== (string)$user_location_id) {
+                echo json_encode(['success' => false, 'message' => 'Access denied']);
+                mysqli_stmt_close($stmt);
+                exit;
+            }
+            
+            $ben_id = (int)$ben['ben_id'];
+            
+            // Get land_id → lease_id
+            if ($st2 = mysqli_prepare($con, 'SELECT land_id FROM ltl_land_registration WHERE ben_id = ? ORDER BY land_id DESC LIMIT 1')) {
+                mysqli_stmt_bind_param($st2, 'i', $ben_id);
+                mysqli_stmt_execute($st2);
+                $r2 = mysqli_stmt_get_result($st2);
+                if ($r2 && ($land = mysqli_fetch_assoc($r2))) {
+                    $land_id = (int)$land['land_id'];
+                    
+                    if ($st3 = mysqli_prepare($con, 'SELECT lease_id FROM leases WHERE land_id = ? ORDER BY created_on DESC LIMIT 1')) {
+                        mysqli_stmt_bind_param($st3, 'i', $land_id);
+                        mysqli_stmt_execute($st3);
+                        $r3 = mysqli_stmt_get_result($st3);
+                        if ($r3 && ($lease = mysqli_fetch_assoc($r3))) {
+                            $lease_id = (int)$lease['lease_id'];
+                        }
+                        mysqli_stmt_close($st3);
+                    }
+                }
+                mysqli_stmt_close($st2);
+            }
+        }
+        mysqli_stmt_close($stmt);
+    }
+}
+
+// Validate required fields
+if ($lease_id <= 0 || $date === '' || $officers === '') {
+    echo json_encode(['success'=>false,'message'=>'Missing required fields or invalid lease']);
+    exit;
 }
 
 

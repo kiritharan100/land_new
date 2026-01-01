@@ -3,6 +3,7 @@ require_once dirname(__DIR__, 2) . '/auth.php';
 ?>
 <form id="rl_land_form" class="mb-3">
     <input type="hidden" id="rl_ben_id" name="ben_id" value="<?php echo isset($ben_id) ? (int)$ben_id : 0; ?>">
+    <input type="hidden" id="rl_md5_ben_id" value="<?php echo isset($md5_ben_id) ? htmlspecialchars($md5_ben_id) : ''; ?>">
     <input type="hidden" id="rl_land_id" name="land_id" value="">
     <div class="row">
         <div class="col-md-3">
@@ -185,11 +186,11 @@ require_once dirname(__DIR__, 2) . '/auth.php';
     }
 
     function loadLand() {
-        var benId = document.getElementById('rl_ben_id').value || '';
-        if (!benId) return;
+        var md5BenId = document.getElementById('rl_md5_ben_id').value || '';
+        if (!md5BenId) return;
         $('#rl_land_id, #rl_ben_id').prop('disabled', false);
         $.getJSON('ajax_residential_lease/load_rl_land.php', {
-            ben_id: benId
+            id: md5BenId
         }, function(resp) {
             if (resp && resp.success && resp.data) {
                 var d = resp.data;

@@ -288,7 +288,7 @@ try {
     $log_detail .= " | Method=$payment_method";
     $log_detail .= " | Date=$payment_date";
     $log_detail .= ' | Discount=' . ($discount_applied ? 'YES' : 'NO');
-    UserLog('2', 'LTL New Payment', $log_detail, $ben_id);
+    UserLog('2', 'LTL New Payment', $log_detail, $ben_id,'LTL');
 
     $response['success']         = true;
     $response['discount']        = $discount_applied ? 'YES' : 'NO';

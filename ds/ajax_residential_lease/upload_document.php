@@ -117,7 +117,7 @@ if ($existing_id){
     $err = mysqli_error($con);
     mysqli_stmt_close($stmtU);
     if ($ok) {
-      UserLog("2", "RL Document Updated", "Ben ID=$ben_id | File Type=$doc_type_id | File URL=$file_url", $ben_id);
+      UserLog("2", "RL Document Updated", "Ben ID=$ben_id | File Type=$doc_type_id | File URL=$file_url", $ben_id, 'RL');
       json_out(true, ['id'=>$existing_id, 'file_url'=>$file_url]);
     } else {
       json_out(false, null, 'Update failed: ' . $err);

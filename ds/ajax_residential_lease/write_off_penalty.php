@@ -22,6 +22,20 @@ try {
 
     $user_id = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : 0;
 
+    // Fetch beneficiary id for logging
+    $ben_id_log = null;
+    if ($lease_id > 0) {
+        if ($stBen = mysqli_prepare($con, 'SELECT beneficiary_id FROM rl_lease WHERE rl_lease_id = ? LIMIT 1')) {
+            mysqli_stmt_bind_param($stBen, 'i', $lease_id);
+            mysqli_stmt_execute($stBen);
+            $resBen = mysqli_stmt_get_result($stBen);
+            if ($resBen && ($rowBen = mysqli_fetch_assoc($resBen))) {
+                $ben_id_log = isset($rowBen['beneficiary_id']) ? (int)$rowBen['beneficiary_id'] : null;
+            }
+            mysqli_stmt_close($stBen);
+        }
+    }
+
     // Insert write-off record
     $sql = "INSERT INTO rl_write_off (lease_id, schedule_id, write_off_amount, created_by, created_on, status) 
             VALUES (?, ?, ?, ?, NOW(), 1)";
@@ -40,6 +54,11 @@ try {
                 ob_end_clean();
             } catch (Exception $e) {
                 // non-fatal
+            }
+
+            if (function_exists('UserLog')) {
+                $detail = sprintf('Recorded penalty write-off: Lease ID=%d | Schedule ID=%d | Amount=%.2f', $lease_id, $schedule_id, $amount);
+                UserLog(2, 'RL Write Off Penalty', $detail, $ben_id_log, 'RL');
             }
             
             $response['success'] = true;

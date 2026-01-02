@@ -99,8 +99,8 @@ if ($stmt->execute()) {
     $new_id = mysqli_insert_id($con);
     if (function_exists('UserLog')) {
         $detail = sprintf('Added field visit: id=%d  | date=%s | officers=%s | status=%s',
-            (int)$new_id, (int)$lease_id, $date, $officers, $vstatus);
-        UserLog(2,'LTL Add Field Visits', $detail,$ben_id);
+            (int)$new_id, $date, $officers, $vstatus);
+        UserLog(2,'LTL Add Field Visits', $detail, $ben_id, 'LTL');
     }
     echo json_encode(['success'=>true, 'message'=>'Added']);
 } else {

@@ -32,6 +32,7 @@ try {
     
     // Accept md5_ben_id (id parameter) and derive lease_id securely
     $lease_id = 0;
+    $ben_id = 0;
     $md5_ben_id = isset($_POST['id']) ? $_POST['id'] : '';
     
     if ($md5_ben_id !== '') {
@@ -83,6 +84,10 @@ try {
     if (mysqli_stmt_execute($stmt)) {
         $response['success'] = true;
         $response['message'] = 'Reminder added';
+        if (function_exists('UserLog')) {
+            $detail = sprintf('Added reminder: lease_id=%d | type=%s | sent_date=%s', (int)$lease_id, $type, $date);
+            UserLog(2, 'RL Add Reminder', $detail, $ben_id, 'RL');
+        }
     } else {
         throw new Exception(mysqli_error($con));
     }
@@ -92,5 +97,4 @@ try {
 }
 
 echo json_encode($response);
-
 

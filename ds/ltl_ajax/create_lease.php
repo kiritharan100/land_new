@@ -152,7 +152,7 @@ try{
  
 
 
-    if (function_exists('UserLog')) { @UserLog(2, 'LTL Create Lease', 'Created lease: ' . $lease_number.' File No: ' . $file_number,$beneficiary_id); }
+    if (function_exists('UserLog')) { @UserLog(2, 'LTL Create Lease', 'Created lease: ' . $lease_number.' File No: ' . $file_number,$beneficiary_id,'LTL'); }
 
     $response['success'] = true;
     $response['lease_id'] = $lease_id;

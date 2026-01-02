@@ -71,7 +71,7 @@ try {
         $new_id = mysqli_insert_id($con);
         mysqli_stmt_close($stmt);
 
-        UserLog("2", "RL Add Land", "Land ID=$new_id | Ben ID=$ben_id  | Address=$land_address | Extent=$extent $extent_unit", $ben_id);
+        UserLog("2", "RL Add Land", "Land ID=$new_id | Ben ID=$ben_id  | Address=$land_address | Extent=$extent $extent_unit", $ben_id, 'RL');
 
         echo json_encode(['success' => true, 'message' => 'Land information saved', 'land_id' => $new_id]);
         exit;
@@ -142,7 +142,7 @@ try {
         mysqli_stmt_close($stmt);
 
         if ($change_text !== "") {
-            UserLog("2", "RL Edit Land", "Land ID=$land_id | $change_text", $ben_id);
+            UserLog("2", "RL Edit Land", "Land ID=$land_id | $change_text", $ben_id, 'RL');
         }
 
         echo json_encode(['success' => true, 'message' => 'Land information updated', 'land_id' => $land_id]);

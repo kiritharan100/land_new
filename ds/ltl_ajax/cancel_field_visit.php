@@ -33,7 +33,7 @@ if ($st = mysqli_prepare($con, 'UPDATE ltl_feald_visits SET status=0 WHERE id=?'
                   ' | date=' . $date . 
                   ' | officers=' . $officers . 
                   ' | status=' . $vstatus;
-        UserLog(2,'LTL Cancel Field Visits', $detail,$ben_id);
+        UserLog(2,'LTL Cancel Field Visits', $detail, $ben_id, 'LTL');
     }
     echo json_encode(['success'=>true,'message'=>'Cancelled']);
   } else {

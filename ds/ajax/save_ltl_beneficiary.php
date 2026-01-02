@@ -106,7 +106,7 @@ function normalize($v) {
 
         // Log ONLY IF changes exist
         if ($change_text !== "No changes") {
-            UserLog('2', 'LTL Beneficiary Edited', 'ID=' . $id . ' | ' . $change_text,$id);
+            UserLog('2', 'LTL Beneficiary Edited', 'ID=' . $id . ' | ' . $change_text, $id, 'LTL');
         }
 
         echo json_encode(['success' => true, 'message' => 'Beneficiary updated!']);
@@ -148,7 +148,7 @@ function normalize($v) {
             $md5_ben = md5($new_id . "key-dtecstudio");
             mysqli_query($con, "UPDATE beneficiaries SET md5_ben_id='$md5_ben' WHERE ben_id=$new_id");
         }
-        UserLog('2', 'LTL Beneficiary Created', 'ID='.$new_id.' Name='.$name,$new_id);
+        UserLog('2', 'LTL Beneficiary Created', 'ID='.$new_id.' Name='.$name, $new_id, 'LTL');
         echo json_encode(['success' => true, 'message' => 'Beneficiary added!']);
     } else {
         echo json_encode(['success' => false, 'message' => mysqli_error($con)]);

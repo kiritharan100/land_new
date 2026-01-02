@@ -43,7 +43,7 @@ if ($stmt = mysqli_prepare($con, 'UPDATE ltl_land_files SET status=0 WHERE id=?'
 
   $msg = 'Document deleted.';
   if (!empty($file_url) && !$file_deleted) $msg .= ' File not found or not deleted.';
- UserLog("2", "LTL Document Deleted", "File ID=$id | URL=$file_url | document Deleted",$ben_id);
+ UserLog("2", "LTL Document Deleted", "File ID=$id | URL=$file_url | document Deleted",$ben_id,'LTL');
   json_out(true, ['id'=>$id, 'file_deleted'=>$file_deleted, 'file_url'=>$file_url], $msg);
 }
 

@@ -55,13 +55,10 @@ try {
             
             // Log the action
             if (function_exists('UserLog')) {
-                UserLog(
-                    "Valuation Payment Added - Lease: " . ($lease['lease_number'] ?? $rl_lease_id) . 
-                    ", Receipt: " . $receipt_number . 
-                    ", Amount: Rs. " . number_format($amount, 2),
-                    'rl_valuvation_paid',
-                    $paid_id
-                );
+                $detail = "Valuation Payment Added - Lease: " . ($lease['lease_number'] ?? $rl_lease_id) . 
+                          ", Receipt: " . $receipt_number . 
+                          ", Amount: Rs. " . number_format($amount, 2);
+                UserLog(2, 'RL Add Valuation Payment', $detail, null, 'RL');
             }
             
             $response['success'] = true;

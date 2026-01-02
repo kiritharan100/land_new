@@ -267,6 +267,10 @@ if ($stmt = $con->prepare($sql)) {
             // non-fatal
         }
         
+        if (function_exists('UserLog')) {
+            $detail = sprintf('RL Lease Created: ID=%d | Lease=%s | File=%s | Beneficiary=%d', (int)$newId, $lease_number, $file_number, $beneficiary_id);
+            UserLog(2, 'RL Create Lease', $detail, $beneficiary_id, 'RL');
+        }
         json_response(true, 'Residential lease created successfully.', ['rl_lease_id' => (int) $newId]);
     }
 

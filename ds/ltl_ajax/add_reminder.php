@@ -106,7 +106,7 @@ if ($st) {
   if (mysqli_stmt_execute($st)) {
     if (function_exists('UserLog')) {
       $detail = sprintf('Added reminder: lease_id=%d | type=%s | sent_date=%s ', $lease_id, $type, $sent_date);
-      UserLog('2','LTL Add Reminders',$detail,$ben_id);
+      UserLog('2','LTL Add Reminders',$detail,$ben_id,'LTL');
     }
     echo json_encode(['success'=>true]);
   } else {

@@ -98,7 +98,7 @@ if ($stmt->execute()) {
     if (function_exists('UserLog')) {
         $detail = sprintf('Added field visit: id=%d | lease=%d | date=%s | officers=%s | status=%s',
             (int)$new_id, (int)$lease_id, $date, $officers, $vstatus);
-        UserLog(2, 'RL Add Field Visit', $detail, $ben_id);
+        UserLog(2, 'RL Add Field Visit', $detail, $ben_id, 'RL');
     }
     echo json_encode(['success' => true, 'message' => 'Added']);
 } else {

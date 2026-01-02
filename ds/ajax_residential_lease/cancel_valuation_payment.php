@@ -48,13 +48,10 @@ try {
         if (mysqli_stmt_execute($stCancel)) {
             // Log the action
             if (function_exists('UserLog')) {
-                UserLog(
-                    "Valuation Payment Cancelled - Lease: " . ($payment['lease_number'] ?? $payment['rl_lease_id']) . 
-                    ", Receipt: " . ($payment['receipt_number'] ?? '') . 
-                    ", Amount: Rs. " . number_format((float)$payment['amount'], 2),
-                    'rl_valuvation_paid',
-                    $paid_id
-                );
+                $detail = "Valuation Payment Cancelled - Lease: " . ($payment['lease_number'] ?? $payment['rl_lease_id']) . 
+                          ", Receipt: " . ($payment['receipt_number'] ?? '') . 
+                          ", Amount: Rs. " . number_format((float)$payment['amount'], 2);
+                UserLog(2, 'RL Cancel Valuation Payment', $detail, $payment['beneficiary_id'] ?? null, 'RL');
             }
             
             $response['success'] = true;

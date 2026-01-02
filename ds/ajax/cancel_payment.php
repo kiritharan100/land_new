@@ -263,7 +263,8 @@ if ($_POST) {
                 '2', 
                 'LTL Cancel Payment', 
                 "Cancelled payment: {$payment['reference_number']}, Amount: {$payment['amount']}, Lease_file: {$payment['file_number']}",
-                $ben_id
+                $ben_id,
+                'LTL'
             );
         }
 

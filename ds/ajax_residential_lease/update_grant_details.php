@@ -24,13 +24,17 @@ if ($rl_lease_id <= 0) {
 }
 
 // Verify lease exists
-if ($stmtCheck = $con->prepare('SELECT rl_lease_id FROM rl_lease WHERE rl_lease_id = ? LIMIT 1')) {
+$ben_id_for_log = null;
+if ($stmtCheck = $con->prepare('SELECT rl_lease_id, beneficiary_id FROM rl_lease WHERE rl_lease_id = ? LIMIT 1')) {
     $stmtCheck->bind_param('i', $rl_lease_id);
     $stmtCheck->execute();
     $res = $stmtCheck->get_result();
     if (!$res || $res->num_rows === 0) {
         $stmtCheck->close();
         json_response(false, 'Lease not found.');
+    }
+    if ($res && ($row = $res->fetch_assoc())) {
+        $ben_id_for_log = isset($row['beneficiary_id']) ? (int)$row['beneficiary_id'] : null;
     }
     $stmtCheck->close();
 }
@@ -42,6 +46,10 @@ if ($stmt = $con->prepare($sql)) {
 
     if ($stmt->execute()) {
         $stmt->close();
+        if (function_exists('UserLog')) {
+            $detail = sprintf('Updated grant details: Lease ID=%d | Grant No=%s | Grant Date=%s', $rl_lease_id, $outright_grants_number, $outright_grants_date);
+            UserLog(2, 'RL Update Grant Details', $detail, $ben_id_for_log, 'RL');
+        }
         json_response(true, 'Grant details updated successfully.');
     }
 
@@ -51,6 +59,3 @@ if ($stmt = $con->prepare($sql)) {
 }
 
 json_response(false, 'Database error: ' . $con->error);
-
-
-

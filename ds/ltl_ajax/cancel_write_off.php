@@ -59,7 +59,7 @@ try {
     if (function_exists('UserLog')) {
         $detail = sprintf('Cancelled write-off: ID=%d, Lease ID=%d, Schedule ID=%d, Amount=%.2f',
             $id, $lease_id, $schedule_id, $amount);
-        UserLog(2, 'LTL Cancel Write Off', $detail, $ben_id);
+        UserLog(2, 'LTL Cancel Write Off', $detail, $ben_id, 'LTL');
     }   
     $out['success']=true; $out['message']='Cancelled';
   } catch (Exception $e) {

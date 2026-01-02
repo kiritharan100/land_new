@@ -80,7 +80,7 @@ try {
         if (function_exists('UserLog')) {
             $detail = sprintf('Written off penalty: Lease ID=%d, Schedule ID=%d, Amount=%.2f, Old Penalty=%.2f, New Penalty=%.2f',
                 $lease_id, $schedule_id, $apply, $cur_pen, $new_pen);
-            UserLog(2, 'LTL Write Off Penalty', $detail, $ben_id);
+            UserLog(2, 'LTL Write Off Penalty', $detail, $ben_id, 'LTL');
         }
 
 

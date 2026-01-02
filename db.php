@@ -70,7 +70,7 @@ if (!function_exists('hasPermission')) {
 
  
 if (!function_exists('UserLog')) {
-    function UserLog($module, $action, $detail, $ben_id = null) {
+    function UserLog($module, $action, $detail, $ben_id = null, $type = null) {
 
         if (session_status() == PHP_SESSION_NONE) {
             session_start();
@@ -98,11 +98,16 @@ if (!function_exists('UserLog')) {
 
         // If ben_id is null, store NULL in DB
         $ben_id_sql = $ben_id !== null ? "'" . intval($ben_id) . "'" : "NULL";
+        if ($type !== null) {
+            $type = mysqli_real_escape_string($con, $type);
+        } else {
+            $type = '';
+        }
 
         // Insert
         $sql = "
-            INSERT INTO user_log (usr_id, module, action, detail, location, ben_id)
-            VALUES ('$usr_id', '$module', '$action', '$detail', '$location', $ben_id_sql)
+            INSERT INTO user_log (usr_id, module, action, detail, location, ben_id, lease_type)
+            VALUES ('$usr_id', '$module', '$action', '$detail', '$location', $ben_id_sql, '$type')
         ";
 
         if (mysqli_query($con, $sql)) {

@@ -385,6 +385,18 @@ if ($stmt = $con->prepare($sql)) {
     json_response(false, 'Database error: ' . $con->error);
 }
 
+// Log update
+if (function_exists('UserLog')) {
+    $detail = sprintf(
+        'RL Lease Updated: ID=%d | Lease=%s | File=%s | Beneficiary=%d',
+        $rl_lease_id,
+        $lease_number,
+        $file_number,
+        $beneficiary_id
+    );
+    UserLog(2, 'RL Update Lease', $detail, $beneficiary_id, 'RL');
+}
+
 // ----------------------------------------------------
 // If skip penalty, remove all penalties from schedules
 // ----------------------------------------------------

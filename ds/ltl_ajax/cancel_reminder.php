@@ -25,7 +25,7 @@ if ($st = mysqli_prepare($con,'UPDATE ltl_reminders SET status=0 WHERE id=?')) {
   if (mysqli_stmt_execute($st)) {
     if (function_exists('UserLog')) {
       $detail = sprintf('Cancelled reminder: id=%d | type=%s | sent_date=%s', (int)$id, $row['reminders_type'], $row['sent_date']);
-      UserLog(2,'LTL Cancel Reminders', $detail,$ben_id);
+      UserLog(2,'LTL Cancel Reminders', $detail, $ben_id, 'LTL');
        
     }
     echo json_encode(['success'=>true]);

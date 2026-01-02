@@ -82,7 +82,8 @@ if ($_POST) {
                 '2', 
                 'RL Cancel Payment', 
                 "Cancelled payment: {$payment['receipt_number']}, Amount: {$payment['amount']}, Lease_file: {$payment['file_number']}",
-                $ben_id
+                $ben_id,
+                'RL'
             );
         }
 

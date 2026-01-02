@@ -30,7 +30,7 @@ try {
     }
 
     // Get lease and location
-    $stmt = mysqli_prepare($con, 'SELECT location_id, discount_rate FROM rl_lease WHERE rl_lease_id = ?');
+    $stmt = mysqli_prepare($con, 'SELECT location_id, discount_rate, beneficiary_id FROM rl_lease WHERE rl_lease_id = ?');
     mysqli_stmt_bind_param($stmt, 'i', $lease_id);
     mysqli_stmt_execute($stmt);
     $res = mysqli_stmt_get_result($stmt);
@@ -42,6 +42,7 @@ try {
     }
 
     $location_id = (int)$lease['location_id'];
+    $ben_id_log = isset($lease['beneficiary_id']) ? (int)$lease['beneficiary_id'] : 0;
     // Use the allocator function to get proper discount rate (converted to decimal)
     $discount_rate = fetchRLLeaseDiscountRate($con, $lease_id);
     $user_id = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : 0;
@@ -148,6 +149,17 @@ try {
         ob_end_clean();
     } catch (Exception $e) {
         // Non-fatal
+    }
+
+    if (function_exists('UserLog')) {
+        $detail = sprintf(
+            'Recorded payment: ID=%d | Lease=%d | Receipt=%s | Amount=%.2f',
+            $payment_id,
+            $lease_id,
+            $receipt_number,
+            $amount
+        );
+        UserLog(2, 'RL Record Payment', $detail, $ben_id_log, 'RL');
     }
 
     $response['success'] = true;

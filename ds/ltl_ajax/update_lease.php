@@ -387,7 +387,8 @@ detectChange("file_number",            $oldLease['file_number'] ?? "",     $file
                 "2",
                 "LTL Lease Updated",
                 $log_msg,
-                $beneficiary_id // saves ben_id in log
+                $beneficiary_id, // saves ben_id in log
+                'LTL'
             );
     } 
 

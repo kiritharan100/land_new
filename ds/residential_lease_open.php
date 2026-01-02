@@ -99,7 +99,18 @@ $is_inactive = false;
 if (!empty($inactive_date)) { $is_inactive = true; }
 if (is_numeric($lease_status_raw) && intval($lease_status_raw) === 0) { $is_inactive = true; }
 if (is_string($status_text) && in_array($status_text, ['inactive','cancelled','closed'], true)) { $is_inactive = true; }
-$overviewBg = $is_inactive ? '#F5C2B8' : '#ffffff';
+
+// Check if grant is issued
+$is_grant_issued = !empty($lease['outright_grants_date']);
+
+// Set background color: grant issued takes priority over inactive
+if ($is_grant_issued) {
+    $overviewBg = '#9FF5A5';
+} elseif ($is_inactive) {
+    $overviewBg = '#F5C2B8';
+} else {
+    $overviewBg = '#ffffff';
+}
 
 // Get GN name for land if available
 $land_gn_name = '';
@@ -122,9 +133,9 @@ if ($land && !empty($land['land_id'])) {
 <div class="content-wrapper">
     <div class="container-fluid">
         <br>
-        <div class="col-md-12 bg-white" style="padding-top:5px;background:<?= $overviewBg ?>;">
+        <div class="col-md-12" style="padding-top:5px;background-color:<?= $overviewBg ?> !important;">
 
-            <h5 class="font-weight-bold" style="margin-bottom:5px;">Residential Lease > Overview </h5>
+            <h5 class="font-weight-bold" style="margin-bottom:5px;">Residential Lease > Overview <?php if ($is_grant_issued): ?><span style="color:#155724;"> ** Outright Grants Issued</span><?php endif; ?></h5>
             
             <?php if ($is_inactive): ?>
             <div class="alert alert-warning" style="background:#F5C2B8;border-color:#e2a396;color:#7a2d21;">

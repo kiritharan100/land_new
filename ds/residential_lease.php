@@ -167,6 +167,7 @@ $remindExpr = "DATE(
                         l.is_it_first_ease,
                         l.lease_number,
                         l.status AS lease_status,
+                        l.outright_grants_date,
                         CASE WHEN l.start_date IS NOT NULL THEN {$remindExpr} ELSE NULL END AS remind_date,
                         CASE WHEN l.rl_lease_id IS NOT NULL THEN (
                           SELECT COUNT(*)
@@ -182,7 +183,7 @@ $remindExpr = "DATE(
                       LEFT JOIN rl_land_registration lr ON lr.ben_id = b.rl_ben_id
                       LEFT JOIN gn_division gn ON lr.gn_id = gn.gn_id
                       LEFT JOIN (
-                        SELECT l2.beneficiary_id, l2.file_number, l2.start_date, l2.rl_lease_id, l2.is_it_first_ease, l2.lease_number, l2.status
+                        SELECT l2.beneficiary_id, l2.file_number, l2.start_date, l2.rl_lease_id, l2.is_it_first_ease, l2.lease_number, l2.status, l2.outright_grants_date
                         FROM rl_lease l2
                         INNER JOIN (
                           SELECT beneficiary_id, MAX(rl_lease_id) AS max_id
@@ -244,7 +245,13 @@ $count = 1;
               $reminderClass = $reminderSent ? ' class="bg-success text-white"' : '';
             ?>
                         <tr
-                            style='<?php if (isset($r['lease_status']) && $r['lease_status'] == 'inactive') { echo "background-color: #ecb5baff;"; } ?>'>
+                            style='<?php 
+                              if (!empty($r['outright_grants_date'])) { 
+                                echo "background-color: #9FF5A5;"; 
+                              } elseif (isset($r['lease_status']) && $r['lease_status'] == 'inactive') { 
+                                echo "background-color: #ecb5baff;"; 
+                              } 
+                            ?>'>
                             <td><?= $count ?></td>
                             <td><?= htmlspecialchars($r['name']) ?></td>
                             <td><?= htmlspecialchars($r['telephone'] ?? '') ?></td>
@@ -272,13 +279,15 @@ $count = 1;
                                 <?php endif; ?>
                             </td>
                             <td align='center' <?= $reminderClass ?>>
-                                <?php if (!empty($r['remind_date']) && (!isset($r['lease_status']) || $r['lease_status'] == 'active')): ?>
+                                <?php if (!empty($r['outright_grants_date'])): ?>
+                                Grant Issued
+                                <?php elseif (!empty($r['remind_date']) && (!isset($r['lease_status']) || $r['lease_status'] == 'active')): ?>
                                 <?= htmlspecialchars($r['remind_date']) ?>
                                 <?php else: ?>
                                 <!-- No remind date for inactive or non-existent leases -->
                                 <?php endif; ?>
                             </td>
-                            <td class="text-right"><?= number_format($out['total'],2) ?></td>
+                            <td class="text-right"><?php if (!empty($r['outright_grants_date'])) { echo '-'; } else { echo number_format($out['total'],2); } ?></td>
 
                             <td>
                                 <a class="btn btn-sm btn-info"

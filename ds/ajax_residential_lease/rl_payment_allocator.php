@@ -359,13 +359,9 @@ function reapplyRLPaymentsOnExistingSchedules(mysqli $con, int $lease_id): bool
         mysqli_stmt_close($st);
     }
 
-    if (empty($payments)) {
-        return true;
-    }
-
     $con->begin_transaction();
 
-    // Reset paid/discount totals on schedules before replay
+    // Reset paid/discount totals on schedules before replay (ALWAYS - even if no payments)
     if ($stReset = mysqli_prepare($con, "UPDATE rl_lease_schedules SET paid_rent=0, panalty_paid=0, premium_paid=0, total_paid=0, discount_apply=0 WHERE lease_id=?")) {
         mysqli_stmt_bind_param($stReset, 'i', $lease_id);
         if (!mysqli_stmt_execute($stReset)) {
@@ -377,6 +373,12 @@ function reapplyRLPaymentsOnExistingSchedules(mysqli $con, int $lease_id): bool
     } else {
         $con->rollback();
         return false;
+    }
+
+    // If no active payments remain, commit the reset and return success
+    if (empty($payments)) {
+        $con->commit();
+        return true;
     }
 
     // Reset payment summaries (use 0 for schedule_id since it's NOT NULL in rl_lease_payments)

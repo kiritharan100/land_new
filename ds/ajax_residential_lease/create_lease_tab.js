@@ -20,6 +20,7 @@
     penaltyInput;
 
   var initialized = false;
+  var grantIssued = false;
 
   var alwaysReadOnly = [
     "rl_discount_rate",
@@ -335,6 +336,20 @@
   }
 
   function enableEdit() {
+    // Check if grant is issued - prevent editing
+    if (grantIssued) {
+      if (window.Swal) {
+        Swal.fire({
+          icon: "error",
+          title: "Unable to Edit",
+          text: "Editing is not allowed after Outright Grant has been issued.",
+        });
+      } else {
+        alert("Unable to Edit: Editing is not allowed after Outright Grant has been issued.");
+      }
+      return;
+    }
+
     var proceed = function() {
       disableForm(false);
       lockReadOnlyFields();
@@ -464,6 +479,7 @@
     }, 500);
 
     var hasExisting = opts && opts.hasExisting;
+    grantIssued = opts && opts.isGrantIssued;
     if (hasExisting) {
       disableForm(true);
       if (saveBtn) saveBtn.classList.add("d-none");

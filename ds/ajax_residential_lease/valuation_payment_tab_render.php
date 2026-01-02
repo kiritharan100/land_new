@@ -35,12 +35,13 @@ if ($md5 !== '') {
 } else { $error = 'Missing id'; }
 
 $lease_id = $lease['rl_lease_id'] ?? 0;
+$is_grant_issued = !empty($lease['outright_grants_date']);
 ?>
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="card-header-text mb-0">Payment for Grant (Outright Grants)</h5>
         <div>
-            <?php if ($lease && hasPermission(18)): ?>
+            <?php if ($lease && hasPermission(18) && !$is_grant_issued): ?>
             <button type="button" class="btn btn-success btn-sm" id="rl-add-valuation-payment-btn">
                 <i class="fa fa-plus"></i> Add Valuation Payment
             </button>

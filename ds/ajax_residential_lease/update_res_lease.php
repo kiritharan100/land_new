@@ -167,6 +167,12 @@ if ($stmtExisting = $con->prepare('SELECT * FROM rl_lease WHERE rl_lease_id = ? 
         $stmtExisting->close();
         json_response(false, 'Lease not found for update.');
     }
+    
+    // Check if grant is already issued - prevent editing
+    if (!empty($existing['outright_grants_date'])) {
+        $stmtExisting->close();
+        json_response(false, 'Not allowed to edit. Outright Grant has been issued for this lease.');
+    }
     $stmtExisting->close();
 }
 

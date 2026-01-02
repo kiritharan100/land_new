@@ -33,12 +33,14 @@ if ($md5 !== ''){
     mysqli_stmt_close($stmt);
   }
 } else { $error = 'Missing id'; }
+
+$is_grant_issued = !empty($lease['outright_grants_date']);
 ?>
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="card-header-text mb-0">Payments</h5>
         <div>
-            <?php if ($lease): ?>
+            <?php if ($lease && !$is_grant_issued): ?>
             <?php if (hasPermission(18)): ?>
             <button type="button" class="btn btn-success btn-sm" id="rl-record-payment-btn"><i class="fa fa-plus"></i>
                 Record Payment</button>

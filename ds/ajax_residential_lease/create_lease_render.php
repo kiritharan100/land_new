@@ -374,9 +374,10 @@ if ($end_date_raw === '' && $start_date_raw) {
 <script>
 (function initRLLeaseForm() {
     var hasExisting = <?php echo $lease ? 'true' : 'false'; ?>;
+    var isGrantIssued = <?php echo !empty($lease['outright_grants_date']) ? 'true' : 'false'; ?>;
     var tryInit = function() {
         if (window.RLLeaseForm && typeof window.RLLeaseForm.init === 'function') {
-            window.RLLeaseForm.init({ hasExisting: hasExisting });
+            window.RLLeaseForm.init({ hasExisting: hasExisting, isGrantIssued: isGrantIssued });
             // ensure numbers and rent compute even if init was late
             if (window.RLLeaseForm.numbers) window.RLLeaseForm.numbers(true);
             if (window.RLLeaseForm.recompute) window.RLLeaseForm.recompute();

@@ -47,6 +47,7 @@ if ($md5 !== '') {
 }
 
 $lease_id = $lease['rl_lease_id'] ?? 0;
+$is_grant_issued = !empty($lease['outright_grants_date']);
 $md5_ben_id = $md5; // Pass the secure identifier to JavaScript
 ?>
 
@@ -105,6 +106,7 @@ $md5_ben_id = $md5; // Pass the secure identifier to JavaScript
 
     var MD5_BEN_ID = <?= json_encode($md5_ben_id) ?>;
     var LEASE_ID = <?= (int)$lease_id ?>;
+    var IS_GRANT_ISSUED = <?= $is_grant_issued ? 'true' : 'false' ?>;
 
     var bodyEl = document.getElementById("rl-fv-body");
     var addBtn = document.getElementById("rl-fv-add-btn");
@@ -132,11 +134,13 @@ $md5_ben_id = $md5; // Pass the secure identifier to JavaScript
         addBtn.disabled = true;
         addBtn.innerHTML = '<i class="fa fa-circle-o-notch fa-spin"></i>';
 
-        fetch("ajax_residential_lease/list_field_visits.php?id=" + encodeURIComponent(MD5_BEN_ID) + "&_ts=" + Date.now())
+        fetch("ajax_residential_lease/list_field_visits.php?id=" + encodeURIComponent(MD5_BEN_ID) + "&grant_issued=" + (IS_GRANT_ISSUED ? '1' : '0') + "&_ts=" + Date.now())
         .then(r => r.text())
         .then(html => {
             bodyEl.innerHTML = html;
-            bindCancelButtons();
+            if (!IS_GRANT_ISSUED) {
+                bindCancelButtons();
+            }
 
             addBtn.innerHTML = '<i class="fa fa-plus"></i> Add';
             validateInputs();

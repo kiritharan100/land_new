@@ -346,6 +346,7 @@ if ($land && !empty($land['land_id'])) {
 </div>
 
 <script>
+window.RL_IS_GRANT_ISSUED = <?php echo json_encode($is_grant_issued); ?>;
 (function() {
     var MD5_BEN_ID = <?php echo json_encode($md5_ben_id ?? ''); ?>;
     var LOADER_HTML = '<div style="text-align:center;padding:16px"><img src="../img/Loading_icon.gif" alt="Loading..." style="width:96px;height:auto" /></div>';

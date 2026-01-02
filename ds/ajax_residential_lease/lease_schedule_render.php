@@ -64,6 +64,15 @@ if ($md5 !== '') {
             <?php if ($lease): ?>
             <button type='button' class='btn btn-info btn-sm' id='rl-regenerate-penalty-btn'
                 data-lease-id='<?= (int)($lease['rl_lease_id'] ?? 0) ?>'> Regenerate Penalty </button>
+            <?php 
+            $token = function_exists('encrypt_id') 
+                        ? encrypt_id($lease['rl_lease_id']) 
+                        : $lease['rl_lease_id'];
+            ?>
+            <a class="btn btn-outline-primary btn-sm" href="ajax_residential_lease/print_schedule.php?token=<?= urlencode($token) ?>"
+                target="_blank">
+                <i class="fa fa-print"></i> Print Schedule
+            </a>
             <?php endif; ?>
         </div>
     </div>
@@ -310,5 +319,4 @@ if ($md5 !== '') {
     });
 })();
 </script>
-
 

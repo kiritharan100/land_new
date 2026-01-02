@@ -26,6 +26,7 @@ if (isset($_COOKIE['client_cook']) && $_COOKIE['client_cook'] !== '') {
 // Accept md5_ben_id (id parameter) and derive lease_id securely
 $lease_id = 0;
 $md5_ben_id = isset($_GET['id']) ? $_GET['id'] : '';
+$is_grant_issued = !empty($_GET['grant_issued']);
 
 if ($md5_ben_id !== '') {
     if ($stmt = mysqli_prepare($con, 'SELECT rl_ben_id, location_id FROM rl_beneficiaries WHERE md5_ben_id = ? LIMIT 1')) {
@@ -90,7 +91,11 @@ if ($st = mysqli_prepare($con, $sql)) {
             echo '<td>' . ($cancelled ? '<span class="badge badge-danger">Cancelled</span>' : '<span class="badge badge-success">Active</span>') . '</td>';
             echo '<td>';
             if (!$cancelled) {
-                echo '<button class="btn btn-outline-danger btn-sm rl-rem-cancel-btn" data-id="' . (int)$row['id'] . '"><i class="fa fa-times"></i> Cancel</button>';
+                if ($is_grant_issued) {
+                    echo '<span class="text-muted">-</span>';
+                } else {
+                    echo '<button class="btn btn-outline-danger btn-sm rl-rem-cancel-btn" data-id="' . (int)$row['id'] . '"><i class="fa fa-times"></i> Cancel</button>';
+                }
             } else {
                 echo '-';
             }
@@ -104,4 +109,3 @@ if ($st = mysqli_prepare($con, $sql)) {
 } else {
     echo '<tr><td colspan="5" class="text-danger text-center">Query failed.</td></tr>';
 }
-

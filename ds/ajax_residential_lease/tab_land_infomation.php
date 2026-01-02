@@ -131,6 +131,18 @@ require_once dirname(__DIR__, 2) . '/auth.php';
     var map, polygonLayer;
     var boundaryList = document.getElementById('rl_boundary_list');
     var form = document.getElementById('rl_land_form');
+    var landFormEditable = true;
+    var hasExistingLand = false;
+    var isGrantIssued = !!window.RL_IS_GRANT_ISSUED;
+
+    function setLandFormEditable(enable) {
+        landFormEditable = enable;
+        var $form = $('#rl_land_form');
+        $form.find('input:not([type="hidden"]), select, textarea').prop('disabled', !enable);
+        $('#rl_extent_ha').prop('readonly', true);
+        $('#rl_land_save_btn, #rl_add_line_btn').prop('disabled', !enable);
+        $('#rl_land_edit_btn').prop('disabled', false);
+    }
 
     function addBoundaryRow(lat, lng) {
         var row = document.createElement('div');
@@ -180,6 +192,7 @@ require_once dirname(__DIR__, 2) . '/auth.php';
         }).addTo(map);
 
         map.on('click', function(e) {
+            if (!landFormEditable) return;
             addBoundaryRow(e.latlng.lat.toFixed(6), e.latlng.lng.toFixed(6));
             syncBoundaryJson();
         });
@@ -187,13 +200,19 @@ require_once dirname(__DIR__, 2) . '/auth.php';
 
     function loadLand() {
         var md5BenId = document.getElementById('rl_md5_ben_id').value || '';
-        if (!md5BenId) return;
+        if (!md5BenId) {
+            setLandFormEditable(true);
+            return;
+        }
+        setLandFormEditable(false);
         $('#rl_land_id, #rl_ben_id').prop('disabled', false);
         $.getJSON('ajax_residential_lease/load_rl_land.php', {
             id: md5BenId
         }, function(resp) {
+            hasExistingLand = false;
             if (resp && resp.success && resp.data) {
                 var d = resp.data;
+                hasExistingLand = !!(d.land_id);
                 $('#rl_land_id').val(d.land_id || '');
                 // Set DS value (convert to string for proper option matching)
                 var dsVal = d.ds_id ? String(d.ds_id) : '';
@@ -222,7 +241,17 @@ require_once dirname(__DIR__, 2) . '/auth.php';
                         boundaryList.innerHTML = '';
                     }
                 }
+            } else {
+                hasExistingLand = false;
             }
+            var allowEditing = !hasExistingLand;
+            if (isGrantIssued && hasExistingLand) {
+                allowEditing = false;
+            }
+            setLandFormEditable(allowEditing);
+        }).fail(function() {
+            hasExistingLand = false;
+            setLandFormEditable(true);
         });
     }
 
@@ -248,6 +277,7 @@ require_once dirname(__DIR__, 2) . '/auth.php';
     document.getElementById('rl_extent_unit').addEventListener('change', calcHectares);
 
     document.getElementById('rl_add_line_btn').addEventListener('click', function() {
+        if (!landFormEditable) return;
         addBoundaryRow('', '');
     });
 
@@ -259,6 +289,9 @@ require_once dirname(__DIR__, 2) . '/auth.php';
 
     document.getElementById('rl_land_form').addEventListener('submit', function(e) {
         e.preventDefault();
+        if (!landFormEditable) {
+            return;
+        }
         syncBoundaryJson();
         var fd = $(this).serialize();
         $('#rl_land_save_btn').prop('disabled', true).text('Saving...');
@@ -266,6 +299,8 @@ require_once dirname(__DIR__, 2) . '/auth.php';
             if (resp && resp.success) {
                 Swal.fire('Success', resp.message || 'Saved', 'success');
                 if (resp.land_id) $('#rl_land_id').val(resp.land_id);
+                hasExistingLand = true;
+                setLandFormEditable(false);
             } else {
                 Swal.fire('Error', (resp && resp.message) || 'Failed to save', 'error');
             }
@@ -275,12 +310,17 @@ require_once dirname(__DIR__, 2) . '/auth.php';
     });
 
     document.getElementById('rl_land_edit_btn').addEventListener('click', function() {
-        $('#rl_land_form input, #rl_land_form select').prop('disabled', false).prop('readonly', false);
+        if (isGrantIssued && hasExistingLand) {
+            Swal.fire('Error', 'Unable to edit after grant issued', 'error');
+            return;
+        }
+        setLandFormEditable(true);
     });
 
     // init
     addBoundaryRow('', '');
     calcHectares();
+    setLandFormEditable(false);
     setTimeout(function() {
         if (typeof initMap === 'function') {} // placeholder
         if (window.L) {

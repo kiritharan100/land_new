@@ -379,7 +379,9 @@ if ($end_date_raw === '' && $start_date_raw) {
         if (window.RLLeaseForm && typeof window.RLLeaseForm.init === 'function') {
             window.RLLeaseForm.init({ hasExisting: hasExisting, isGrantIssued: isGrantIssued });
             // ensure numbers and rent compute even if init was late
-            if (window.RLLeaseForm.numbers) window.RLLeaseForm.numbers(true);
+            if (!hasExisting && window.RLLeaseForm.numbers) {
+                window.RLLeaseForm.numbers(true);
+            }
             if (window.RLLeaseForm.recompute) window.RLLeaseForm.recompute();
             return true;
         }

@@ -184,7 +184,7 @@ $is_grant_issued = !empty($lease['outright_grants_date']);
                     <?php
                         $paymentId = (int)$p['paid_id'];
                         $isCancelled = (int)($p['status'] ?? 1) === 0;
-                        $canCancel = !$isCancelled && $paymentId === $lastActivePaymentId;
+                        $canCancel = !$isCancelled && !$is_grant_issued && $paymentId === $lastActivePaymentId;
                     ?>
                     <tr class="<?= $isCancelled ? 'cancelled-row' : '' ?>">
                         <td><?= $sn++ ?></td>
@@ -397,4 +397,3 @@ $is_grant_issued = !empty($lease['outright_grants_date']);
         <?php endif; ?>
     </div>
 </div>
-

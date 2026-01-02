@@ -5,6 +5,7 @@ require_once dirname(__DIR__, 2) . '/auth.php';
 $md5 = isset($_GET['id']) ? $_GET['id'] : '';
 $ben = $land = $lease = null;
 $error = '';
+$is_grant_issued = false;
 
 if ($md5 !== '') {
     if ($st = mysqli_prepare($con, 'SELECT rl_ben_id, name FROM rl_beneficiaries WHERE md5_ben_id=? LIMIT 1')) {
@@ -25,6 +26,7 @@ if ($md5 !== '') {
                         $r3 = mysqli_stmt_get_result($st3);
                         if ($r3) {
                             $lease = mysqli_fetch_assoc($r3);
+                            $is_grant_issued = !empty($lease['outright_grants_date']);
                         }
                         mysqli_stmt_close($st3);
                     }
@@ -52,7 +54,7 @@ if ($md5 !== '') {
         <?php else: ?>
 
         <!-- Recovery Letter Section -->
-        <div class="reminder-item"
+        <!-- <div class="reminder-item"
             style="border:1px solid #ddd;padding:12px 14px;border-radius:6px;margin-bottom:14px;background:#fafafa;">
             <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;">
                 <div>
@@ -69,12 +71,13 @@ if ($md5 !== '') {
                     </button>
                 </div>
             </div>
-        </div>
+        </div> -->
 
         <!-- Add Payment Reminders Section -->
         <div class="reminder-item"
             style="border:1px solid #805858ff; background-color:#f8f0f0; padding:12px 14px;border-radius:6px; ">
-            <div style="border-radius:6px; background-color:#F0D89C; padding:8px; display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
+            <div
+                style="border-radius:6px; background-color:#F0D89C; padding:8px; display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
                 <div>
                     <span style="font-weight:600;font-size:14px;">Add Payment Reminders</span><br>
                     <small style="color:#666;">Track sent reminders. Add new entries and manage it.</small>
@@ -82,7 +85,8 @@ if ($md5 !== '') {
                 <div style="margin-top:8px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
                     <label>Letter Type:</label>
                     <select id="rl-rem-type" class="form-control form-control-sm"
-                        style="width:160px; background-color: #ffffff !important;">
+                        style="width:160px; background-color: #ffffff !important;"
+                        <?= $is_grant_issued ? 'disabled' : '' ?>>
                         <option value="">Select</option>
                         <option>Annexure 09</option>
                         <option>Annexure 12A</option>
@@ -90,9 +94,10 @@ if ($md5 !== '') {
                     </select>
                     <label>Letter Date:</label>
                     <input type="date" id="rl-rem-date" class="form-control form-control-sm" style="width:150px;"
-                        value="<?= date('Y-m-d') ?>" />
+                        value="<?= date('Y-m-d') ?>" <?= $is_grant_issued ? 'disabled' : '' ?> />
                     <button type="button" id="rl-rem-add-btn" class="btn btn-success btn-sm" disabled
-                        title="Select type & date"><i class="fa fa-plus"></i> Add Record</button>
+                        title="<?= $is_grant_issued ? 'Disabled after grant issued' : 'Select type & date' ?>">
+                        <i class="fa fa-plus"></i> Add Record</button>
                 </div>
             </div>
             <style>
@@ -100,9 +105,11 @@ if ($md5 !== '') {
             .rl-rem-table td {
                 font-size: 13px;
             }
+
             .rl-rem-row-cancelled {
                 background: #fde2e2 !important;
             }
+
             .rl-rem-row-cancelled td {
                 color: #842029 !important;
             }
@@ -136,10 +143,12 @@ if ($md5 !== '') {
             <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;">
                 <div>
                     <span style="font-weight:600;font-size:14px;">02. Annexure 09</span><br>
-                    <small style="color:#666;">Generate Annexure 09 letter for outstanding amounts as at selected date.</small>
+                    <small style="color:#666;">Generate Annexure 09 letter for outstanding amounts as at selected
+                        date.</small>
                 </div>
                 <div style="margin-top:8px;">
-                    <label for="rl-annexure-09-date" style="font-size:12px;font-weight:600;margin-right:6px;">As At Date</label>
+                    <label for="rl-annexure-09-date" style="font-size:12px;font-weight:600;margin-right:6px;">As At
+                        Date</label>
                     <input type="date" id="rl-annexure-09-date" name="as_at_date"
                         class="form-control form-control-sm d-inline-block" style="width:160px;"
                         value="<?= date('Y-m-d') ?>" />
@@ -161,10 +170,12 @@ if ($md5 !== '') {
             <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;">
                 <div>
                     <span style="font-weight:600;font-size:14px;">03. Annexure 12</span><br>
-                    <small style="color:#666;">Generate Annexure 12 letter for outstanding amounts as at selected date.</small>
+                    <small style="color:#666;">Generate Annexure 12 letter for outstanding amounts as at selected
+                        date.</small>
                 </div>
                 <div style="margin-top:8px;">
-                    <label for="rl-annexure-12-date" style="font-size:12px;font-weight:600;margin-right:6px;">As At Date</label>
+                    <label for="rl-annexure-12-date" style="font-size:12px;font-weight:600;margin-right:6px;">As At
+                        Date</label>
                     <input type="date" id="rl-annexure-12-date" name="as_at_date"
                         class="form-control form-control-sm d-inline-block" style="width:160px;"
                         value="<?= date('Y-m-d') ?>" />
@@ -186,14 +197,17 @@ if ($md5 !== '') {
             <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;">
                 <div>
                     <span style="font-weight:600;font-size:14px;">04. Annexure 12A</span><br>
-                    <small style="color:#666;">Generate Annexure 12A letter for outstanding amounts as at selected date.</small>
+                    <small style="color:#666;">Generate Annexure 12A letter for outstanding amounts as at selected
+                        date.</small>
                 </div>
                 <div style="margin-top:8px;">
-                    <label for="rl-annexure-12a-date1" style="font-size:12px;font-weight:600;margin-right:6px;">Last Reminder Date</label>
+                    <label for="rl-annexure-12a-date1" style="font-size:12px;font-weight:600;margin-right:6px;">Last
+                        Reminder Date</label>
                     <input type="date" id="rl-annexure-12a-date1" name="last_reminder_date"
                         class="form-control form-control-sm d-inline-block" style="width:160px;"
                         value="<?= date('Y-m-d') ?>" />
-                    <label for="rl-annexure-12a-date" style="font-size:12px;font-weight:600;margin-right:6px;">As At Date</label>
+                    <label for="rl-annexure-12a-date" style="font-size:12px;font-weight:600;margin-right:6px;">As At
+                        Date</label>
                     <input type="date" id="rl-annexure-12a-date" name="as_at_date"
                         class="form-control form-control-sm d-inline-block" style="width:160px;"
                         value="<?= date('Y-m-d') ?>" />
@@ -212,20 +226,23 @@ if ($md5 !== '') {
         <script>
         function printRLAnnexure09(lang) {
             const date = document.getElementById('rl-annexure-09-date').value;
-            const url = `ajax_residential_lease/letters/rl_annexure_09.php?id=<?= urlencode($md5) ?>&as_at_date=${date}&language=${lang}`;
+            const url =
+                `ajax_residential_lease/letters/rl_annexure_09.php?id=<?= urlencode($md5) ?>&as_at_date=${date}&language=${lang}`;
             window.open(url, '_blank');
         }
 
         function printRLAnnexure12(lang) {
             const date = document.getElementById('rl-annexure-12-date').value;
-            const url = `ajax_residential_lease/letters/rl_annexure_12.php?id=<?= urlencode($md5) ?>&as_at_date=${date}&language=${lang}`;
+            const url =
+                `ajax_residential_lease/letters/rl_annexure_12.php?id=<?= urlencode($md5) ?>&as_at_date=${date}&language=${lang}`;
             window.open(url, '_blank');
         }
 
         function printRLAnnexure12A(lang) {
             const date = document.getElementById('rl-annexure-12a-date').value;
             const lastReminderDate = document.getElementById('rl-annexure-12a-date1').value;
-            const url = `ajax_residential_lease/letters/rl_annexure_12A.php?id=<?= urlencode($md5) ?>&as_at_date=${date}&last_reminder_date=${lastReminderDate}&language=${lang}`;
+            const url =
+                `ajax_residential_lease/letters/rl_annexure_12A.php?id=<?= urlencode($md5) ?>&as_at_date=${date}&last_reminder_date=${lastReminderDate}&language=${lang}`;
             window.open(url, '_blank');
         }
 
@@ -233,6 +250,7 @@ if ($md5 !== '') {
             var rDate = document.getElementById('rl-recovery-date');
             var rBtn = document.getElementById('rl-recovery-letter-btn');
             var MD5_BEN_ID = <?= json_encode($md5) ?>;
+            var IS_GRANT_ISSUED = <?= $is_grant_issued ? 'true' : 'false' ?>;
 
             if (rBtn) {
                 rBtn.addEventListener('click', function() {
@@ -240,7 +258,8 @@ if ($md5 !== '') {
                         Swal.fire('Validation', 'Select date first', 'warning');
                         return;
                     }
-                    var url = 'ajax_residential_lease/letters/rl_recovery_letter.php?id=<?= urlencode($md5) ?>&date=' +
+                    var url =
+                        'ajax_residential_lease/letters/rl_recovery_letter.php?id=<?= urlencode($md5) ?>&date=' +
                         encodeURIComponent(rDate.value) + '&_ts=' + Date.now();
                     window.open(url, '_blank');
                 });
@@ -253,6 +272,11 @@ if ($md5 !== '') {
             var remBody = document.getElementById('rl-rem-body');
 
             function validateRemInputs() {
+                if (IS_GRANT_ISSUED) {
+                    remAddBtn.disabled = true;
+                    remAddBtn.title = 'Disabled after grant issued';
+                    return;
+                }
                 if (remTypeEl && remDateEl && remTypeEl.value && remDateEl.value) {
                     remAddBtn.disabled = false;
                     remAddBtn.title = 'Add';
@@ -270,21 +294,26 @@ if ($md5 !== '') {
                     return;
                 }
                 remBody.innerHTML = '<tr><td colspan="5" class="text-center">Loading...</td></tr>';
-                fetch('ajax_residential_lease/list_reminders.php?id=' + encodeURIComponent(MD5_BEN_ID) + '&_ts=' + Date.now())
+                fetch('ajax_residential_lease/list_reminders.php?id=' + encodeURIComponent(MD5_BEN_ID) + '&grant_issued=' + (IS_GRANT_ISSUED ? '1' : '0') + '&_ts=' +
+                        Date.now())
                     .then(r => r.text())
                     .then(html => {
                         remBody.innerHTML = html;
-                        bindCancelReminders();
+                        if (!IS_GRANT_ISSUED) {
+                            bindCancelReminders();
+                        }
                         validateRemInputs();
                     })
                     .catch(() => {
-                        remBody.innerHTML = '<tr><td colspan="5" class="text-danger text-center">Load failed.</td></tr>';
+                        remBody.innerHTML =
+                            '<tr><td colspan="5" class="text-danger text-center">Load failed.</td></tr>';
                     });
             }
 
             function bindCancelReminders() {
                 remBody.querySelectorAll('.rl-rem-cancel-btn').forEach(function(btn) {
                     btn.addEventListener('click', function() {
+                        if (IS_GRANT_ISSUED) return;
                         var id = this.getAttribute('data-id');
                         if (!id) return;
                         var doCancel = function() {
@@ -302,7 +331,8 @@ if ($md5 !== '') {
                                     if (resp.success) {
                                         loadReminders();
                                     } else {
-                                        Swal.fire('Error', resp.message || 'Cancel failed', 'error');
+                                        Swal.fire('Error', resp.message || 'Cancel failed',
+                                            'error');
                                     }
                                 })
                                 .catch(() => Swal.fire('Error', 'Network error', 'error'));
@@ -324,7 +354,7 @@ if ($md5 !== '') {
 
             if (remAddBtn) {
                 remAddBtn.addEventListener('click', function() {
-                    if (remAddBtn.disabled) return;
+                    if (remAddBtn.disabled || IS_GRANT_ISSUED) return;
                     var t = remTypeEl.value;
                     var d = remDateEl.value;
                     if (!t || !d) {

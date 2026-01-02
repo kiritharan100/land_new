@@ -16,6 +16,7 @@
   }
 
   function renderDocsTable(rows, md5){
+    var isGrantIssued = !!window.RL_IS_GRANT_ISSUED;
     var html = '';
     html += '<div class="table-responsive">';
     html += '<table class="table table-bordered table-sm" id="docs-table">';
@@ -33,7 +34,7 @@
         var fileInfo = r.file || null;
         var hasFile = !!(fileInfo && fileInfo.file_url);
         var fileLink = hasFile ? '<a href="'+fileInfo.file_url+'" target="_blank">Open</a>' : '<span class="text-muted">No file</span>';
-        var delBtn = hasFile ? '<button type="button" class="btn btn-sm btn-outline-danger docs-del" data-id="'+fileInfo.id+'" data-doc="'+r.doc_type_id+'">Delete</button>' : '';
+        var delBtn = (!isGrantIssued && hasFile) ? '<button type="button" class="btn btn-sm btn-outline-danger docs-del" data-id="'+fileInfo.id+'" data-doc="'+r.doc_type_id+'">Delete</button>' : '';
         var approvalBlock = '';
         var approvalRequired = String(r.approval_required) === '1';
         if (approvalRequired){

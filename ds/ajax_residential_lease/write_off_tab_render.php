@@ -22,7 +22,7 @@ if ($md5 !== '') {
                 
                 if ($land) {
                     $land_id = (int)$land['land_id'];
-                    if ($st3 = mysqli_prepare($con, 'SELECT rl_lease_id FROM rl_lease WHERE land_id=? ORDER BY rl_lease_id DESC LIMIT 1')) {
+                    if ($st3 = mysqli_prepare($con, 'SELECT rl_lease_id, outright_grants_date FROM rl_lease WHERE land_id=? ORDER BY rl_lease_id DESC LIMIT 1')) {
                         mysqli_stmt_bind_param($st3, 'i', $land_id);
                         mysqli_stmt_execute($st3);
                         $r3 = mysqli_stmt_get_result($st3);
@@ -39,6 +39,7 @@ if ($md5 !== '') {
 $writeoffs = [];
 if ($lease) {
     $lease_id = (int)$lease['rl_lease_id'];
+    $is_grant_issued = !empty($lease['outright_grants_date']);
     $sql = "SELECT w.*, s.schedule_year 
             FROM rl_write_off w
             LEFT JOIN rl_lease_schedules s ON w.schedule_id = s.schedule_id
@@ -83,11 +84,15 @@ if ($lease) {
                         <td class="text-right"><?= number_format($w['write_off_amount'], 2) ?></td>
                         <td><?= htmlspecialchars($w['created_on']) ?></td>
                         <td>
-                            <button type="button" class="btn btn-danger btn-xs rl-wo-cancel" 
-                                data-id="<?= $w['id'] ?>"
-                                data-amount="<?= number_format($w['write_off_amount'], 2) ?>">
-                                <i class="fa fa-times"></i> Cancel
-                            </button>
+                            <?php if (!empty($is_grant_issued)): ?>
+                                <span class="text-muted">-</span>
+                            <?php else: ?>
+                                <button type="button" class="btn btn-danger btn-xs rl-wo-cancel" 
+                                    data-id="<?= $w['id'] ?>"
+                                    data-amount="<?= number_format($w['write_off_amount'], 2) ?>">
+                                    <i class="fa fa-times"></i> Cancel
+                                </button>
+                            <?php endif; ?>
                         </td>
                     </tr>
                     <?php endforeach; ?>
@@ -103,6 +108,7 @@ if ($lease) {
     document.addEventListener('click', function(ev) {
         var btn = ev.target.closest('.rl-wo-cancel');
         if (!btn) return;
+        if (<?= !empty($is_grant_issued) ? 'true' : 'false' ?>) { return; }
         var id = btn.getAttribute('data-id');
         var amt = btn.getAttribute('data-amount');
         if (typeof Swal !== 'undefined') {
@@ -134,5 +140,3 @@ if ($lease) {
     });
 })();
 </script>
-
-

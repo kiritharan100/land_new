@@ -26,6 +26,7 @@ if (isset($_COOKIE['client_cook']) && $_COOKIE['client_cook'] !== '') {
 // Accept md5_ben_id (id parameter) and derive lease_id securely
 $lease_id = 0;
 $md5_ben_id = isset($_GET['id']) ? $_GET['id'] : '';
+$is_grant_issued = !empty($_GET['grant_issued']);
 
 if ($md5_ben_id !== '') {
     // Fetch beneficiary → land → lease chain securely
@@ -104,9 +105,12 @@ foreach ($rows as $r) {
     if ($isCancelled) {
         echo '<span class="badge-cancelled">Cancelled</span>';
     } else {
-        echo '<button type="button" class="btn btn-outline-danger btn-sm rl-fv-cancel-btn" data-id="' . (int)$r['id'] . '"><i class="fa fa-times"></i> Cancel</button>';
+        if ($is_grant_issued) {
+            echo '<span class="text-muted">-</span>';
+        } else {
+            echo '<button type="button" class="btn btn-outline-danger btn-sm rl-fv-cancel-btn" data-id="' . (int)$r['id'] . '"><i class="fa fa-times"></i> Cancel</button>';
+        }
     }
     echo '</td>';
     echo '</tr>';
 }
-

@@ -220,6 +220,7 @@ if ($land && !empty($land['land_id'])) {
                         <a href="#" class="list-group-item list-group-item-action"
                             data-target="#write-off">Write-Off</a>
                         <a href="#" class="list-group-item list-group-item-action" data-target="#tab3">Reminders</a>
+                        <a href="#" class="list-group-item list-group-item-action" data-target="#rl-log">Log</a>
                     </div>
                 </div>
                 <div style='width:100%;text-align:center;'>
@@ -332,6 +333,29 @@ if ($land && !empty($land['land_id'])) {
                         <h5 class="font-weight-bold">Reminders</h5>
                         <hr>
                         <div id="ltl-reminders-container" data-loaded="0">
+                            <div style="text-align:center;padding:16px">
+                                <img src="../img/Loading_icon.gif" alt="Loading..." style="width:96px;height:auto" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="rl-log" class="submenu-section d-none">
+                        <h5 class="font-weight-bold">Log</h5>
+                        <hr>
+                        <div class="d-flex align-items-end flex-wrap" style="gap:8px;">
+                            <div>
+                                <label class="small mb-1">From</label>
+                                <input type="date" class="form-control form-control-sm" id="rl-log-from">
+                            </div>
+                            <div>
+                                <label class="small mb-1">To</label>
+                                <input type="date" class="form-control form-control-sm" id="rl-log-to">
+                            </div>
+                            <button class="btn btn-primary btn-sm mb-2" id="rl-log-load-btn">
+                                <i class="fa fa-sync"></i> Load
+                            </button>
+                        </div>
+                        <div id="rl-log-container" class="mt-3" data-loaded="0">
                             <div style="text-align:center;padding:16px">
                                 <img src="../img/Loading_icon.gif" alt="Loading..." style="width:96px;height:auto" />
                             </div>
@@ -491,6 +515,26 @@ window.RL_IS_GRANT_ISSUED = <?php echo json_encode($is_grant_issued); ?>;
         }).catch(() => rem.innerHTML = '<div class="text-danger">Failed to load reminders.</div>');
     }
 
+    function loadLogTab(force) {
+        var cont = document.getElementById('rl-log-container');
+        if (!cont) return;
+        if (cont.getAttribute('data-loaded') === '1' && !force) return;
+        var params = new URLSearchParams();
+        params.set('id', <?php echo json_encode($md5_ben_id ?? ''); ?>);
+        var f = document.getElementById('rl-log-from');
+        var t = document.getElementById('rl-log-to');
+        if (f && f.value) params.set('from', f.value);
+        if (t && t.value) params.set('to', t.value);
+        cont.innerHTML = LOADER_HTML;
+        fetch('ajax_residential_lease/lease_logs_render.php?' + params.toString())
+            .then(r => r.text())
+            .then(html => {
+                cont.innerHTML = html;
+                cont.setAttribute('data-loaded', '1');
+            })
+            .catch(() => cont.innerHTML = '<div class="text-danger">Failed to load logs.</div>');
+    }
+
     function loadWriteOffTab() {
         var woc = document.getElementById('ltl-write-off-container');
         if (!woc) return;
@@ -524,6 +568,7 @@ window.RL_IS_GRANT_ISSUED = <?php echo json_encode($is_grant_issued); ?>;
             if (target === '#field_visits') loadFieldVisitsTab();
             if (target === '#write-off') loadWriteOffTab();
             if (target === '#tab3') loadRemindersTab();
+            if (target === '#rl-log') loadLogTab(true);
         });
     });
 
@@ -540,6 +585,7 @@ window.RL_IS_GRANT_ISSUED = <?php echo json_encode($is_grant_issued); ?>;
         if (t === '#field_visits') loadFieldVisitsTab();
         if (t === '#write-off') loadWriteOffTab();
         if (t === '#tab3') loadRemindersTab();
+        if (t === '#rl-log') loadLogTab(true);
     }
 
     // Event listeners for refresh
@@ -562,6 +608,25 @@ window.RL_IS_GRANT_ISSUED = <?php echo json_encode($is_grant_issued); ?>;
     window.addEventListener('rl:fieldvisits-updated', loadFieldVisitsTab);
     window.addEventListener('rl:reminders-updated', loadRemindersTab);
     window.addEventListener('rl:valuation-payments-updated', loadValuationPaymentTab);
+
+    var logBtn = document.getElementById('rl-log-load-btn');
+    if (logBtn) {
+        logBtn.addEventListener('click', function() {
+            var cont = document.getElementById('rl-log-container');
+            if (cont) cont.setAttribute('data-loaded', '0');
+            loadLogTab(true);
+        });
+    }
+    // Default date range current year
+    (function initLogDates() {
+        var f = document.getElementById('rl-log-from');
+        var t = document.getElementById('rl-log-to');
+        var now = new Date();
+        var yearStart = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
+        var today = now.toISOString().split('T')[0];
+        if (f && !f.value) f.value = yearStart;
+        if (t && !t.value) t.value = today;
+    })();
 })();
 </script>
 

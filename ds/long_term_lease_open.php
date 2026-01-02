@@ -240,6 +240,7 @@ if( $lease_location_id == $location_id ) {
                         <a href="#" class="list-group-item list-group-item-action"
                             data-target="#write-off">Write-Off</a>
                         <a href="#" class="list-group-item list-group-item-action" data-target="#tab3">Reminders</a>
+                        <a href="#" class="list-group-item list-group-item-action" data-target="#ltl-log">Log</a>
                     </div>
 
 
@@ -360,6 +361,29 @@ if( $lease_location_id == $location_id ) {
                         <h5 class="font-weight-bold">Reminders</h5>
                         <hr>
                         <div id="ltl-reminders-container" data-loaded="0">
+                            <div style="text-align:center;padding:16px">
+                                <img src="../img/Loading_icon.gif" alt="Loading..." style="width:96px;height:auto" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="ltl-log" class="submenu-section d-none">
+                        <h5 class="font-weight-bold">Log</h5>
+                        <hr>
+                        <div class="d-flex align-items-end flex-wrap" style="gap:8px;">
+                            <div>
+                                <label class="small mb-1">From</label>
+                                <input type="date" class="form-control form-control-sm" id="ltl-log-from">
+                            </div>
+                            <div>
+                                <label class="small mb-1">To</label>
+                                <input type="date" class="form-control form-control-sm" id="ltl-log-to">
+                            </div>
+                            <button class="btn btn-primary btn-sm mb-2" id="ltl-log-load-btn">
+                                <i class="fa fa-sync"></i> Load
+                            </button>
+                        </div>
+                        <div id="ltl-log-container" class="mt-3" data-loaded="0">
                             <div style="text-align:center;padding:16px">
                                 <img src="../img/Loading_icon.gif" alt="Loading..." style="width:96px;height:auto" />
                             </div>
@@ -1060,6 +1084,9 @@ if( $lease_location_id == $location_id ) {
                     });
             }
         }
+        if (active.getAttribute('data-target') === '#ltl-log') {
+            loadLTLLog(true);
+        }
 
         // Global listener: after recording a payment, reload the Payment tab content
         window.addEventListener('ltl:payments-updated', function() {
@@ -1180,5 +1207,70 @@ if( $lease_location_id == $location_id ) {
 <script src="/assets/plugins/select2/dist/js/select2.full.min.js"></script> -->
 <!-- SweetAlert2 -->
 
+<script>
+// Log tab (LTL) lazy loader
+(function() {
+    var MD5_BEN_ID = <?php echo json_encode($md5_ben_id ?? ''); ?>;
+    var LOG_LOADER = '<div style="text-align:center;padding:16px"><img src="../img/Loading_icon.gif" alt="Loading..." style="width:96px;height:auto" /></div>';
+
+    function loadLTLLog(force) {
+        var cont = document.getElementById('ltl-log-container');
+        if (!cont) return;
+        if (cont.getAttribute('data-loaded') === '1' && !force) return;
+        var params = new URLSearchParams();
+        params.set('id', MD5_BEN_ID);
+        var f = document.getElementById('ltl-log-from');
+        var t = document.getElementById('ltl-log-to');
+        if (f && f.value) params.set('from', f.value);
+        if (t && t.value) params.set('to', t.value);
+        cont.innerHTML = LOG_LOADER;
+        fetch('ltl_ajax/lease_logs_render.php?' + params.toString())
+            .then(function(r){ return r.text(); })
+            .then(function(html){
+                cont.innerHTML = html;
+                cont.setAttribute('data-loaded','1');
+            })
+            .catch(function(){
+                cont.innerHTML = '<div class="text-danger">Failed to load logs.</div>';
+            });
+    }
+
+    var logBtn = document.getElementById('ltl-log-load-btn');
+    if (logBtn) {
+        logBtn.addEventListener('click', function(){
+            var cont = document.getElementById('ltl-log-container');
+            if (cont) cont.setAttribute('data-loaded','0');
+            loadLTLLog(true);
+        });
+    }
+
+    // Default date range: current year
+    (function initLogDates(){
+        var f = document.getElementById('ltl-log-from');
+        var t = document.getElementById('ltl-log-to');
+        var now = new Date();
+        var yearStart = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
+        var today = now.toISOString().split('T')[0];
+        if (f && !f.value) f.value = yearStart;
+        if (t && !t.value) t.value = today;
+    })();
+
+    // Hook tab clicks
+    document.querySelectorAll('#submenu-list a').forEach(function(link){
+        link.addEventListener('click', function(){
+            var target = this.getAttribute('data-target');
+            if (target === '#ltl-log') {
+                loadLTLLog(true);
+            }
+        });
+    });
+
+    // If log tab is active on load
+    var active = document.querySelector('#submenu-list a.active');
+    if (active && active.getAttribute('data-target') === '#ltl-log') {
+        loadLTLLog(true);
+    }
+})();
+</script>
 
 <?php include 'footer.php'; ?>

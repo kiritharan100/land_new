@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jan 01, 2026 at 06:32 AM
+-- Generation Time: Jan 03, 2026 at 11:57 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.0.30
 
@@ -794,6 +794,23 @@ CREATE TABLE `rl_reminders` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `rl_valuvation_paid`
+--
+
+CREATE TABLE `rl_valuvation_paid` (
+  `paid_id` int(11) NOT NULL,
+  `rl_lease_id` int(11) NOT NULL,
+  `amount` decimal(10,2) NOT NULL,
+  `location_id` int(11) NOT NULL,
+  `mode_payment` varchar(50) NOT NULL,
+  `receipt_number` varchar(150) NOT NULL,
+  `memo` varchar(200) NOT NULL,
+  `status` int(11) NOT NULL DEFAULT 1
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `rl_write_off`
 --
 
@@ -907,6 +924,7 @@ CREATE TABLE `user_location` (
 CREATE TABLE `user_log` (
   `id` int(11) NOT NULL,
   `ben_id` int(11) DEFAULT NULL,
+  `lease_type` varchar(10) NOT NULL,
   `usr_id` int(11) NOT NULL,
   `module` int(11) NOT NULL,
   `location` int(11) NOT NULL,
@@ -1128,6 +1146,12 @@ ALTER TABLE `rl_premium_change`
 --
 ALTER TABLE `rl_reminders`
   ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `rl_valuvation_paid`
+--
+ALTER TABLE `rl_valuvation_paid`
+  ADD PRIMARY KEY (`paid_id`);
 
 --
 -- Indexes for table `rl_write_off`
@@ -1378,6 +1402,12 @@ ALTER TABLE `rl_premium_change`
 --
 ALTER TABLE `rl_reminders`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `rl_valuvation_paid`
+--
+ALTER TABLE `rl_valuvation_paid`
+  MODIFY `paid_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `rl_write_off`
